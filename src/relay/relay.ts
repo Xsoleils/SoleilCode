@@ -2,6 +2,7 @@ import { GeminiAdapter } from "../adapters/gemini.js";
 import { OllamaAdapter } from "../adapters/ollama.js";
 import { OpenAICompatibleAdapter } from "../adapters/openai-compatible.js";
 import { ProviderRequestError } from "../adapters/provider-error.js";
+import { translate, type SoleilLanguage } from "../i18n.js";
 import type {
   ChatResponse,
   ChatMessage,
@@ -19,7 +20,11 @@ import { taskLabel } from "./task-classifier.js";
 const COOLDOWN_MS = 45_000;
 const MAX_AUTOMATIC_RATE_LIMIT_WAIT_MS = 30_000;
 
-async function waitFor(milliseconds: number, signal?: AbortSignal): Promise<void> {
+async function waitFor(
+  milliseconds: number,
+  signal?: AbortSignal,
+  language: SoleilLanguage = "en",
+): Promise<void> {
   if (milliseconds <= 0) return;
   await new Promise<void>((resolve, reject) => {
     let timeout: NodeJS.Timeout;
@@ -30,7 +35,7 @@ async function waitFor(milliseconds: number, signal?: AbortSignal): Promise<void
     const abort = (): void => {
       clearTimeout(timeout);
       signal?.removeEventListener("abort", abort);
-      reject(new Error("İstek kullanıcı tarafından durduruldu."));
+      reject(new Error(translate(language, "requestStopped")));
     };
     if (signal?.aborted) return abort();
     timeout = setTimeout(finish, milliseconds);
@@ -76,6 +81,10 @@ export class SoleilRelay {
 
   setMode(mode: SoleilMode): void {
     this.config.mode = mode;
+  }
+
+  setLanguage(language: SoleilLanguage): void {
+    this.config.language = language;
   }
 
   getRuntimeState(providerId: string, modelId: string): ModelRuntimeState {
@@ -125,8 +134,12 @@ export class SoleilRelay {
           model.priority + successRate * 20 + localBonus + taskBonus - latencyPenalty;
         const reason =
           model.cost === "local"
-            ? `${taskLabel(task)} işi için yerel ve özel`
-            : `${taskLabel(task)} işi için ücretsiz rota puanı en yüksek`;
+            ? translate(this.config.language, "localReason", {
+                task: taskLabel(task, this.config.language),
+              })
+            : translate(this.config.language, "freeReason", {
+                task: taskLabel(task, this.config.language),
+              });
         result.push({ provider, model, score, reason });
       }
     }
@@ -143,8 +156,8 @@ export class SoleilRelay {
     if (candidates.length === 0) {
       throw new Error(
         this.config.mode === "local" || this.config.mode === "private"
-          ? "Çalışan bir yerel model bulunamadı. Ollama'yı başlatın veya OLLAMA_MODEL ayarlayın."
-          : "Kullanılabilir ücretsiz model bulunamadı. Bir sağlayıcı anahtarı veya yerel model ekleyin.",
+          ? translate(this.config.language, "noLocalModel")
+          : translate(this.config.language, "noFreeModel"),
       );
     }
 
@@ -209,15 +222,19 @@ export class SoleilRelay {
 
     if (retryCandidate) {
       const candidate = retryCandidate;
-      await waitFor(Math.max(0, candidate.readyAt - Date.now()) + 250, signal);
+      await waitFor(
+        Math.max(0, candidate.readyAt - Date.now()) + 250,
+        signal,
+        this.config.language,
+      );
       const state = this.stateFor(candidate.decision.provider.id, candidate.decision.model.id);
       state.cooldownUntil = 0;
       const response = await attempt(candidate.decision);
       if (response) return { ...response, decision: candidate.decision, attempts };
     }
 
-    throw new Error(
-      `Bütün ücretsiz modeller başarısız oldu: ${lastError?.message || "bilinmeyen hata"}`,
-    );
+    throw new Error(translate(this.config.language, "allModelsFailed", {
+      error: lastError?.message || translate(this.config.language, "unknownError"),
+    }));
   }
 }

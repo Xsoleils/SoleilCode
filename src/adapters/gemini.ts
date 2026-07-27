@@ -21,7 +21,7 @@ export class GeminiAdapter implements ProviderAdapter {
   readonly kind = "gemini" as const;
 
   async chat(provider: ProviderDefinition, request: ChatRequest): Promise<ChatResponse> {
-    if (!provider.apiKey) throw new Error("Gemini API anahtarı bulunamadı.");
+    if (!provider.apiKey) throw new Error("Gemini API key is missing.");
 
     const system = request.messages
       .filter((message) => message.role === "system")
@@ -40,7 +40,7 @@ export class GeminiAdapter implements ProviderAdapter {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "user-agent": "SoleilCode/0.1",
+        "user-agent": "SoleilCode/0.3",
         "x-goog-api-key": provider.apiKey,
       },
       body: JSON.stringify({
@@ -59,7 +59,7 @@ export class GeminiAdapter implements ProviderAdapter {
     try {
       payload = JSON.parse(raw) as GeminiResponse;
     } catch {
-      throw new Error(`Geçersiz Gemini yanıtı (${response.status}): ${raw.slice(0, 300)}`);
+      throw new Error(`Invalid Gemini response (${response.status}): ${raw.slice(0, 300)}`);
     }
     if (!response.ok) {
       throw new ProviderRequestError(
@@ -73,7 +73,7 @@ export class GeminiAdapter implements ProviderAdapter {
       ?.map((part) => part.text || "")
       .join("")
       .trim();
-    if (!content) throw new Error("Gemini boş yanıt döndürdü.");
+    if (!content) throw new Error("Gemini returned an empty response.");
 
     const input = payload.usageMetadata?.promptTokenCount;
     const output = payload.usageMetadata?.candidatesTokenCount;

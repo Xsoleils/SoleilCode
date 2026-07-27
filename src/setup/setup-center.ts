@@ -9,7 +9,9 @@ import {
   FREE_CATALOG_VERIFIED_AT,
   FREE_PROVIDER_CATALOG,
 } from "../free-catalog.js";
+import { translate, type SoleilLanguage } from "../i18n.js";
 import { TerminalUI } from "../ui.js";
+import { runLanguagePicker } from "./language-picker.js";
 
 const PROVIDER_NAMES: Record<CredentialProvider, string> = {
   groq: "Groq",
@@ -17,11 +19,14 @@ const PROVIDER_NAMES: Record<CredentialProvider, string> = {
   openrouter: "OpenRouter",
 };
 
-export function tokenLines(credentials: StoredCredential[]): string[] {
-  if (!credentials.length) return ["Henüz kasaya eklenmiş token yok."];
+export function tokenLines(
+  credentials: StoredCredential[],
+  language: SoleilLanguage = "en",
+): string[] {
+  if (!credentials.length) return [translate(language, "noTokens")];
   return credentials.map(
     (credential, index) =>
-      `${index + 1}. ${PROVIDER_NAMES[credential.provider]} · ${credential.label} · kimlik ${credentialFingerprint(credential.secret)}`,
+      `${index + 1}. ${PROVIDER_NAMES[credential.provider]} · ${credential.label} · ${translate(language, "fingerprint")} ${credentialFingerprint(credential.secret)}`,
   );
 }
 
@@ -31,53 +36,62 @@ async function addToken(ui: TerminalUI, vault: CredentialVault): Promise<boolean
       offer.tokenRequired && offer.id !== "ollama",
   );
   const selected = await ui.choose(
-    "Ücretsiz sağlayıcı seç",
-    supported.map((offer) => `${offer.name} — ${offer.summary}`),
+    ui.text("chooseProvider"),
+    supported.map((offer) => `${offer.name} — ${ui.text(offer.summaryKey)}`),
   );
   if (selected === undefined) return false;
   const offer = supported[selected];
   if (!offer) return false;
 
-  ui.section(`${offer.name} tokenı`, [
-    offer.summary,
-    `Token alma adresi: ${offer.signupUrl}`,
-    "Yalnızca sahibi olduğunuz ve sağlayıcı koşullarına uygun tokenları ekleyin.",
-    "Girilen değer ekranda gösterilmeyecek.",
+  ui.section(ui.text("tokenFor", { provider: offer.name }), [
+    ui.text(offer.summaryKey),
+    ui.text("tokenUrl", { url: offer.signupUrl }),
+    ui.text("tokenOwnerNotice"),
+    ui.text("tokenHiddenNotice"),
   ]);
-  const label = await ui.ask("Bu hesaba kısa bir ad ver");
-  const secret = await ui.secret("API tokenını yapıştır");
+  const label = await ui.ask(ui.text("accountLabel"));
+  const secret = await ui.secret(ui.text("pasteToken"));
   if (!secret) {
-    ui.error("Boş token kaydedilmedi.");
+    ui.error(ui.text("emptyToken"));
     return false;
   }
 
   const result = await vault.add(offer.id, label, secret);
   if (result.added) {
     ui.info(
-      `${offer.name} tokenı güvenli kasaya eklendi · kimlik ${credentialFingerprint(result.credential.secret)}`,
+      ui.text("tokenAdded", {
+        provider: offer.name,
+        fingerprint: credentialFingerprint(result.credential.secret),
+      }),
     );
     return true;
   }
-  ui.info("Bu token daha önce eklenmiş; ikinci kez kaydedilmedi.");
+  ui.info(ui.text("tokenDuplicate"));
   return false;
 }
 
 async function removeToken(ui: TerminalUI, vault: CredentialVault): Promise<boolean> {
   const credentials = await vault.list();
   if (!credentials.length) {
-    ui.info("Silinecek token yok.");
+    ui.info(ui.text("noTokenToRemove"));
     return false;
   }
-  const selected = await ui.choose("Silinecek tokenı seç", tokenLines(credentials));
+  const selected = await ui.choose(
+    ui.text("chooseTokenToRemove"),
+    tokenLines(credentials, ui.getLanguage()),
+  );
   if (selected === undefined) return false;
   const credential = credentials[selected];
   if (!credential) return false;
   const approved = await ui.confirm(
-    `${PROVIDER_NAMES[credential.provider]} · ${credential.label} tokenı kasadan silinsin mi?`,
+    ui.text("confirmTokenRemove", {
+      provider: PROVIDER_NAMES[credential.provider],
+      label: credential.label,
+    }),
   );
   if (!approved) return false;
   const removed = await vault.remove(credential.id);
-  if (removed) ui.info("Token kasadan silindi.");
+  if (removed) ui.info(ui.text("tokenRemoved"));
   return removed;
 }
 
@@ -87,27 +101,33 @@ export async function runSetupCenter(
 ): Promise<boolean> {
   let changed = false;
   while (true) {
-    const selected = await ui.choose("SoleilCode ücretsiz model merkezi", [
-      "Yeni API tokenı ekle",
-      "Bağlı tokenları göster",
-      "Ücretsiz seçenekleri öner",
-      "Token sil",
+    const selected = await ui.choose(ui.text("setupTitle"), [
+      ui.text("addApiToken"),
+      ui.text("showTokens"),
+      ui.text("recommendFree"),
+      ui.text("removeToken"),
+      ui.text("helpLanguage"),
     ]);
     if (selected === undefined) return changed;
 
     if (selected === 0) {
       changed = (await addToken(ui, vault)) || changed;
     } else if (selected === 1) {
-      ui.section("Bağlı tokenlar", tokenLines(await vault.list()));
+      ui.section(
+        ui.text("connectedTokens"),
+        tokenLines(await vault.list(), ui.getLanguage()),
+      );
     } else if (selected === 2) {
       const credentials = await vault.list();
-      ui.section(`Ücretsiz seçenekler · doğrulama ${FREE_CATALOG_VERIFIED_AT}`, [
-        ...catalogLines(credentials),
+      ui.section(ui.text("freeOptions", { date: FREE_CATALOG_VERIFIED_AT }), [
+        ...catalogLines(credentials, ui.getLanguage()),
         "",
-        "Ücretsiz kotalar değişebilir. SoleilCode ücretli modele otomatik geçmez.",
+        ui.text("quotaNotice"),
       ]);
     } else if (selected === 3) {
       changed = (await removeToken(ui, vault)) || changed;
+    } else if (selected === 4) {
+      await runLanguagePicker(ui);
     }
   }
 }

@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-echo SoleilCode kuruluyor...
+echo Installing SoleilCode...
 call npm install
 if errorlevel 1 goto :fail
 call npm run build
@@ -9,12 +9,12 @@ if errorlevel 1 goto :fail
 call npm link
 if errorlevel 1 goto :fail
 echo.
-echo Kurulum tamamlandi.
-echo Herhangi bir proje klasorunde CMD acip soleil yazabilirsiniz.
-echo Once sistemi kontrol etmek icin: soleil doctor
+echo Installation complete.
+echo Open CMD in any project directory and enter: soleil
+echo Check your model setup first with: soleil doctor
 exit /b 0
 
 :fail
 echo.
-echo Kurulum tamamlanamadi. Yukaridaki hata mesajini kontrol edin.
+echo Installation failed. Review the error message above.
 exit /b 1

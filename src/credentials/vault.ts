@@ -54,16 +54,16 @@ export class CredentialVault {
       const raw = await readFile(this.filePath, "utf8");
       const document = JSON.parse(raw) as Partial<VaultDocument>;
       if (document.version !== 1 || !Array.isArray(document.credentials)) {
-        throw new Error("Token kasası biçimi desteklenmiyor.");
+        throw new Error("The token vault format is not supported.");
       }
       if (!document.credentials.every(isCredential)) {
-        throw new Error("Token kasasında geçersiz kayıt var.");
+        throw new Error("The token vault contains an invalid record.");
       }
       return document.credentials.map((credential) => ({ ...credential }));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
       throw new Error(
-        `Soleil token kasası okunamadı: ${error instanceof Error ? error.message : error}`,
+        `The Soleil token vault could not be read: ${error instanceof Error ? error.message : error}`,
       );
     }
   }
@@ -74,7 +74,7 @@ export class CredentialVault {
     secret: string,
   ): Promise<{ credential: StoredCredential; added: boolean }> {
     const cleanSecret = secret.trim();
-    if (cleanSecret.length < 12) throw new Error("Token beklenenden kısa görünüyor.");
+    if (cleanSecret.length < 12) throw new Error("The token appears shorter than expected.");
     const credentials = await this.list();
     const existing = credentials.find(
       (item) => item.provider === provider && item.secret === cleanSecret,
@@ -84,7 +84,7 @@ export class CredentialVault {
     const credential: StoredCredential = {
       id: randomUUID(),
       provider,
-      label: label.trim().slice(0, 60) || `${provider} hesabı`,
+      label: label.trim().slice(0, 60) || `${provider} account`,
       secret: cleanSecret,
       createdAt: new Date().toISOString(),
     };

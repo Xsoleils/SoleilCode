@@ -2,4 +2,4 @@
 setlocal
 cd /d "%~dp0"
 call npm unlink -g soleilcode
-echo SoleilCode genel CMD komutu kaldirildi. Proje dosyalari silinmedi.
+echo The global SoleilCode command was removed. Project files were not deleted.

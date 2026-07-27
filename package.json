@@ -1,7 +1,15 @@
 {
   "name": "soleilcode",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Free-first, local-first AI coding agent powered by SoleilRelay.",
+  "homepage": "https://github.com/Xsoleils/SoleilCode#readme",
+  "bugs": {
+    "url": "https://github.com/Xsoleils/SoleilCode/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xsoleils/SoleilCode.git"
+  },
   "type": "module",
   "bin": {
     "soleil": "./bin/soleil.js"
@@ -17,7 +25,8 @@
     "dev": "tsx src/cli.ts",
     "start": "node bin/soleil.js",
     "test": "node --import tsx --test tests/**/*.test.ts",
-    "check": "npm run build && npm test"
+    "check": "npm run build && npm test",
+    "prepublishOnly": "npm run check"
   },
   "engines": {
     "node": ">=22"
@@ -26,6 +35,9 @@
     "ai",
     "coding-agent",
     "llm",
+    "cli",
+    "typescript",
+    "multilingual",
     "ollama",
     "free-ai",
     "openai-compatible"

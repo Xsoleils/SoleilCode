@@ -1,231 +1,328 @@
-# SoleilCode
+<div align="center">
 
-SoleilCode, ücretsiz bulut modellerini ve yerel LLM'leri **SoleilRelay** üzerinden
-birleştiren, terminalde çalışan açık kaynak bir kodlama ajanıdır.
+# ☀ SoleilCode
 
-> Model seçme, amacını söyle. SoleilCode ücretsiz kapasiteni yönetsin.
+### A free-first, local-first AI coding agent for your terminal
 
-Terminal maskotu, açık güneşi taşıyan özgün Soleil kedisidir:
+SoleilCode understands your project, uses tools with explicit approval, and lets
+**SoleilRelay** choose the best available free or local model for each task.
+
+[![CI](https://github.com/Xsoleils/SoleilCode/actions/workflows/ci.yml/badge.svg)](https://github.com/Xsoleils/SoleilCode/actions/workflows/ci.yml)
+[![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-16a34a.svg)](LICENSE)
+[![Free-first](https://img.shields.io/badge/models-free--first-4ade80)](#free-models)
+
+</div>
 
 ```text
- /\_/\
-( •.• )
-/ >☀
+╭────────────────────────────────────────────────────────────────────╮
+│   /\_/\      SoleilCode · Free-first AI coding agent               │
+│  ( •.• )     SoleilRelay · auto · 4 models ready · EN              │
+│  / >☀        C:\projects\your-app                                  │
+╰────────────────────────────────────────────────────────────────────╯
+  /help commands  ·  Ctrl+C stop  ·  /exit exit
+──────────────────────────────────────────────────────────────────────
+❯ find the login bug, fix it, and run the relevant tests
 ```
 
-Etkileşimli terminalde yeşil Soleil teması tam ekran açılır. Kedi, çalışma modu,
-model sayısı ve proje yolu üst başlıkta sabit kalır; konuşma ve araç kayıtları alt
-bölgede kayar. `/exit` ile çıkıldığında önceki CMD ekranı geri gelir.
+## Why SoleilCode?
 
-## İlk sürümde neler çalışıyor?
+Most coding agents are tied to one model or a paid subscription. SoleilCode takes
+a different approach:
 
-- CMD veya PowerShell içinde etkileşimli `soleil` komutu
-- Claude Code benzeri proje klasörü üzerinden çalışma
-- Dosya listeleme, okuma ve metin arama
-- Onaylı dosya yazma ve güvenli tam-metin değiştirme
-- Onaylı terminal komutu çalıştırma
-- Git farkını inceleme
-- Ücretsiz sağlayıcılar arasında otomatik fallback
-- Ollama üzerindeki yerel modelleri otomatik keşfetme
-- `auto`, `free`, `local` ve `private` çalışma modları
-- Ücretli modele geçmeyen sıfır maliyet kilidi
-- Sağlayıcı hata verdiğinde kısa süreli cooldown
+- **Free-first routing** — paid model definitions are rejected.
+- **Local-first privacy** — Ollama works without an API token or internet access.
+- **Task-aware model selection** — coding, debugging, review, tests, exploration,
+  and long-context work can use different models.
+- **Graceful fallback** — rate-limited or unavailable providers are cooled down
+  while SoleilRelay tries another eligible route.
+- **Human-controlled tools** — file writes and commands require approval by default.
+- **Ten interface languages** — change language without reinstalling or editing code.
 
-SoleilCode henüz erken geliştirme sürümüdür. Her yazma ve komut işlemi varsayılan
-olarak kullanıcı onayı ister.
+> SoleilCode is an early-stage project. Review proposed edits and terminal commands
+> before approving them, especially in important repositories.
 
-## Windows kurulumu
+## Highlights
 
-Node.js 22 veya daha yenisi gereklidir.
+| Area | What is included |
+| --- | --- |
+| Terminal experience | Full-screen green interface, persistent cat header, live model and tool activity |
+| Project tools | List/read/search files, write files, exact text replacement, command execution, Git diff |
+| Model routing | Groq, Gemini, OpenRouter, Ollama, and custom OpenAI-compatible endpoints |
+| Cost controls | Only `free` and `local` model definitions are eligible |
+| Privacy modes | `auto`, `free`, `local`, and `private` |
+| Token center | Hidden token entry, multiple accounts, fingerprints, listing, and removal |
+| Safety | Workspace boundary, secret-file blocking, explicit write/command approval |
+| Languages | English, Turkish, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean |
 
-1. `install-windows.cmd` dosyasını çalıştırın.
-2. Çalışmak istediğiniz proje klasöründe CMD açın.
-3. `soleil doctor` ile modelleri kontrol edin.
-4. `soleil` yazarak SoleilCode'u başlatın.
+## Quick start
 
-İlk ücretsiz modeli eklemenin en kolay yolu:
+### Requirements
 
-```powershell
-soleil setup
+- Node.js 22 or newer
+- Windows CMD or PowerShell
+- At least one local model or free provider token
+
+### Install on Windows
+
+Clone the repository, open the folder, and run:
+
+```bat
+install-windows.cmd
 ```
 
-Tam ekran model merkezinde Groq, Gemini veya OpenRouter seçilebilir. Token girişi
-gizlidir; yazılan değer terminalde görünmez. Aynı sağlayıcı için farklı, meşru
-hesaplara ait birden fazla token eklenebilir.
+Or install manually:
 
-Elle kurulum:
-
-```powershell
+```bash
 npm install
 npm run build
 npm link
 ```
 
-Ardından herhangi bir klasörde:
+Then open any project directory and start SoleilCode:
 
-```powershell
+```bash
 soleil
 ```
 
-Farklı bir proje klasörünü açıkça seçmek için:
+Check discovered models:
 
-```powershell
-soleil --cwd C:\projeler\uygulamam
+```bash
+soleil doctor
 ```
 
-## Ücretsiz model bağlama
+Open the guided free-model and token center:
 
-### Soleil model merkezi
+```bash
+soleil setup
+```
 
-SoleilCode içindeyken aşağıdaki komutlar kullanılabilir:
+Work in a specific directory:
+
+```bash
+soleil --cwd C:\projects\my-app
+```
+
+## Interface languages
+
+SoleilCode ships with ten selectable interface languages:
+
+| Code | Language | Code | Language |
+| --- | --- | --- | --- |
+| `en` | English | `it` | Italiano |
+| `tr` | Türkçe | `pt` | Português |
+| `es` | Español | `ru` | Русский |
+| `fr` | Français | `ja` | 日本語 |
+| `de` | Deutsch | `ko` | 한국어 |
+
+Use the visual picker:
+
+```bash
+soleil language
+```
+
+Or choose a language for one launch:
+
+```bash
+soleil --language es
+```
+
+Inside the interactive agent:
 
 ```text
-/setup    Token ekleme, listeleme, öneri ve silme merkezi
-/tokens   Bağlı tokenların sağlayıcı, etiket ve gizli kimliklerini göster
-/free     Doğrulanmış ücretsiz seçenekleri ve kayıt adreslerini göster
+/language
+/language ja
 ```
 
-Tokenlar `%USERPROFILE%\.soleilcode\credentials.json` altında kullanıcı profiline
-özel izinlerle tutulur. Ham token terminalde, model mesajlarında veya durum
-ekranında gösterilmez. Bu ilk kasa sürümü işletim sistemi anahtar zinciriyle
-şifrelenmiş değildir; cihaz disk şifrelemesi kullanılması önerilir.
+Selections made with the picker or `/language CODE` are stored in
+`%USERPROFILE%\.soleilcode\config.json`.
 
-Birden fazla token, sahip olduğunuz hesapları tek yerde yönetmek ve bir sağlayıcı
-geçici olarak kullanılamadığında diğer meşru rotaya geçmek içindir. Sahte hesap,
-kota atlatma veya sağlayıcı koşullarını ihlal eden kullanım desteklenmez. Aynı
-kuruluşa ait farklı tokenlar ortak kotayı paylaşabilir.
+## Free models
 
-### Ollama — tamamen yerel
+The built-in setup center explains how to connect these routes:
 
-Ollama çalışıyorsa kurulu modeller otomatik bulunur. Belirli bir modeli seçmek için:
+| Provider | Route | Best fit |
+| --- | --- | --- |
+| Ollama | Models installed on your machine | Fully local and private work |
+| Groq | Free-plan coding and general models | Fast edits, tests, and debugging |
+| Google Gemini | Free-tier Flash models | Exploration and long-context tasks |
+| OpenRouter | `openrouter/free` | Automatic selection among available free models |
+| Custom endpoint | OpenAI-compatible server | Self-hosted or community endpoints |
 
-```powershell
+Free quotas and model availability are controlled by each provider and can change.
+SoleilCode never intentionally upgrades to a paid route, but it cannot determine
+whether billing is enabled on an external provider account. For strict zero-cost
+use, disable billing at the provider or use Ollama.
+
+### Ollama — fully local
+
+SoleilCode discovers installed models automatically while Ollama is running.
+To force a specific model:
+
+```bat
 set OLLAMA_MODEL=qwen2.5-coder:7b
 soleil --mode local
 ```
 
-Kalıcı ortam değişkeni için Windows'ta `setx` kullanılabilir. Değer sonraki terminal
-pencerelerinde etkinleşir.
+### Groq
 
-### Groq ücretsiz kotası
-
-```powershell
-set GROQ_API_KEY=...
+```bat
+set GROQ_API_KEY=your_token
 soleil
 ```
 
-SoleilRelay varsayılan olarak Groq'un güncel ücretsiz planındaki birkaç kodlama
-modelini ayrı fallback adayları olarak kullanır. Tek bir model zorlamak isterseniz
-`GROQ_MODEL` değerini ayrıca ayarlayın.
+Optionally set `GROQ_MODEL` to force one model.
 
-### Gemini ücretsiz kotası
+### Google Gemini
 
-```powershell
-set GEMINI_API_KEY=...
-set GEMINI_MODEL=...
+```bat
+set GEMINI_API_KEY=your_token
+set GEMINI_MODEL=your_free_model
 soleil
 ```
 
-### OpenRouter ücretsiz model
+### OpenRouter
 
-Varsayılan olarak OpenRouter'ın `openrouter/free` yönlendiricisi kullanılır:
-
-```powershell
-set OPENROUTER_API_KEY=...
+```bat
+set OPENROUTER_API_KEY=your_token
 soleil
 ```
 
-Belirli bir ücretsiz model istenirse `OPENROUTER_MODEL` ayrıca ayarlanabilir.
+The default route is `openrouter/free`. Set `OPENROUTER_MODEL` to use a specific
+eligible free model.
 
-### Herhangi bir OpenAI uyumlu ücretsiz sunucu
+### Custom OpenAI-compatible endpoint
 
-```powershell
+```bat
 set SOLEIL_BASE_URL=http://127.0.0.1:1234/v1
 set SOLEIL_MODEL=local-coder
 set SOLEIL_API_KEY=
 soleil
 ```
 
-Anahtarlar yapılandırma dosyalarına yazılmaz. `.soleilcode.example.json`, özel
-sağlayıcı eklemek için örnektir; gerçek anahtarın yalnızca ortam değişkeninin adı
-yazılır.
+See [.soleilcode.example.json](.soleilcode.example.json) for project-level
+configuration. Store only the environment variable name in configuration files,
+never the secret itself.
 
-## Terminal komutları
+## Token center
 
-| Komut | İşlev |
-|---|---|
-| `/help` | Komutları gösterir |
-| `/models` | Bulunan modelleri gösterir |
-| `/status` | SoleilRelay durumunu gösterir |
-| `/setup` | Ücretsiz model ve token merkezini açar |
-| `/tokens` | Bağlı tokenları gizli kimlikleriyle gösterir |
-| `/free` | Güncel ücretsiz seçenekleri önerir |
-| `/mode auto` | Ücretsiz bulut ve yerel modelleri birlikte kullanır |
-| `/mode free` | Yalnızca ücretsiz kaynakları kullanır |
-| `/mode local` | Yalnızca yerel modelleri kullanır |
-| `/mode private` | Kaynak kodunu cihazdan çıkarmaz |
-| `/clear` | Konuşma bağlamını temizler |
-| `/exit` | Uygulamadan çıkar |
+Use `soleil setup` or `/setup` to:
 
-Dosya ve terminal onaylarını yalnızca kontrollü ortamlarda kapatmak için `--yes`
-kullanılabilir.
+1. Add tokens with hidden terminal input.
+2. Keep multiple legitimate accounts for supported providers.
+3. List tokens by provider, label, and irreversible short fingerprint.
+4. Remove a token without opening the credentials file.
+5. Change the interface language.
 
-## SoleilRelay
+Tokens are stored in `%USERPROFILE%\.soleilcode\credentials.json` with
+user-profile permissions. Raw token values are never printed in status views or
+sent to models as chat content.
 
-SoleilRelay her model için öncelik, maliyet türü, geçmiş başarı, hata ve ortalama
-gecikme bilgilerini kullanır. Bir model başarısız olduğunda sıradaki ücretsiz veya
-yerel modele geçer. Mevcut sürüm ücretli model tanımını kabul etmez.
+The current vault format is not encrypted with the operating-system keychain.
+Use device encryption and protect your Windows account. Keychain-backed storage
+is planned.
 
-İstekler ayrıca yerel olarak sınıflandırılır:
+## Commands
 
-- Sohbet ve hızlı sorular
-- Proje keşfi ve açıklama
-- Kod yazma veya düzenleme
-- Hata ayıklama
-- Kod/güvenlik incelemesi
-- Test ve doğrulama
-- Uzun bağlamlı proje analizi
+| Command | Purpose |
+| --- | --- |
+| `/help` | Show interactive commands |
+| `/models` | Show discovered providers and models |
+| `/status` | Show SoleilRelay mode and route health |
+| `/setup` | Open the free-model and token center |
+| `/tokens` | List token labels and fingerprints |
+| `/free` | Show built-in free provider guidance |
+| `/language` | Open the ten-language selector |
+| `/language CODE` | Change and save the interface language |
+| `/mode auto` | Use free cloud and local routes |
+| `/mode free` | Use free routes |
+| `/mode local` | Use local routes only |
+| `/mode private` | Keep source code on the device |
+| `/clear` | Clear conversation context |
+| `/exit` | Exit SoleilCode |
 
-SoleilRelay her görevde o alanda güçlü olarak işaretlenmiş ücretsiz modeli öne
-alır. Seçilen model ve seçim nedeni terminalde gösterilir.
+Use `--yes` only in controlled environments to bypass file and command approvals.
 
-> Önemli: SoleilCode yalnızca ücretsiz olarak işaretlenmiş rotaları seçer; bağlı
-> sağlayıcı hesabının ücretli plana geçirilmiş olup olmadığını her sağlayıcıda
-> teknik olarak doğrulayamaz. Gerçek sıfır maliyet için faturalandırması kapalı,
-> ücretsiz katman hesapları kullanın.
+## How SoleilRelay works
 
-```text
-Kullanıcı görevi
-      ↓
-Soleil Agent
-      ↓
-SoleilRelay → ücretsiz bulut modeli
-      │       yerel Ollama modeli
-      │       özel OpenAI uyumlu model
-      ↓
-Dosya / arama / terminal araçları
-      ↓
-Kullanıcı onayı ve doğrulama
+```mermaid
+flowchart TD
+    U["User task"] --> C["Local task classifier"]
+    C --> R["SoleilRelay scorer"]
+    R --> F["Eligible free cloud models"]
+    R --> L["Local Ollama models"]
+    R --> O["Custom OpenAI-compatible models"]
+    F --> A["Soleil coding agent"]
+    L --> A
+    O --> A
+    A --> T["Project tools"]
+    T --> P{"User approval required?"}
+    P -->|Yes| U
+    P -->|Approved| T
 ```
 
-## Geliştirme
+For every eligible model, SoleilRelay considers:
 
-```powershell
+- configured priority;
+- task-specific strengths;
+- local/private mode bonuses;
+- observed success rate;
+- average latency;
+- active cooldown after failures or rate limits.
+
+If a provider fails, the next free or local candidate is tried. Short provider
+retry windows can be honored once when doing so is faster than abandoning the route.
+
+## Security model
+
+- Project tools cannot leave the selected workspace.
+- `.env`, `.git`, private keys, certificates, and common secret files are blocked.
+- File writes and terminal commands require approval by default.
+- API keys are not included in model prompts.
+- Token entry is hidden and token listings show fingerprints only.
+- `private` mode only permits local models.
+
+Found a vulnerability? Please follow [SECURITY.md](SECURITY.md) instead of opening
+a public issue.
+
+## Development
+
+```bash
+npm install
 npm run dev
 npm test
 npm run check
 ```
 
-## Güvenlik yaklaşımı
+The test suite covers agent tool loops, safe workspace boundaries, secret-file
+blocking, fallback routing, task-aware routing, rate-limit retries, credential
+handling, and internationalization.
 
-- `.env`, `.git`, özel anahtar ve sertifika dosyalarının okunması engellenir.
-- Dosya araçları çalışma klasörünün dışına çıkamaz.
-- Yazma ve komut çalıştırma işlemleri varsayılan olarak açık onay ister.
-- API anahtarları modele veya terminal durum ekranına gönderilmez.
-- Kurulum merkezinde token girişi ekranda yankılanmaz.
-- Token listesinde yalnızca geri döndürülemez kısa parmak izi gösterilir.
-- `private` modunda yalnızca yerel modeller aday olabilir.
+## Project status
 
-## Lisans
+### Available now
 
-MIT
+- Full terminal coding-agent loop
+- Free/local task-aware routing
+- Multiple provider tokens
+- Ten-language interface
+- Windows installer
+- Automated test suite and CI
+
+### Planned
+
+- OS keychain-backed token encryption
+- Streaming model output
+- Git-aware patch review screen
+- Provider health dashboard
+- macOS and Linux installers
+- Plugin/tool extension API
+
+## Contributing
+
+Issues and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md)
+and keep changes focused, tested, and free-first.
+
+## License
+
+SoleilCode is available under the [MIT License](LICENSE).

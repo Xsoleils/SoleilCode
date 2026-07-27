@@ -1,4 +1,5 @@
 import type { CredentialProvider, StoredCredential } from "./credentials/vault.js";
+import { translate, type MessageKey, type SoleilLanguage } from "./i18n.js";
 
 export interface FreeProviderOffer {
   id: CredentialProvider | "ollama";
@@ -7,13 +8,15 @@ export interface FreeProviderOffer {
   signupUrl: string;
   docsUrl: string;
   tokenRequired: boolean;
+  summaryKey: MessageKey;
 }
 
 export const FREE_PROVIDER_CATALOG: FreeProviderOffer[] = [
   {
     id: "groq",
     name: "Groq Free Plan",
-    summary: "Çok hızlı kodlama modelleri; RPM, RPD ve TPM sınırları modele göre değişir.",
+    summary: "Fast coding models with model-specific RPM, RPD, and TPM limits.",
+    summaryKey: "freeGroqSummary",
     signupUrl: "https://console.groq.com/keys",
     docsUrl: "https://console.groq.com/docs/rate-limits",
     tokenRequired: true,
@@ -21,7 +24,8 @@ export const FREE_PROVIDER_CATALOG: FreeProviderOffer[] = [
   {
     id: "gemini",
     name: "Google Gemini Free Tier",
-    summary: "Seçili Flash modellerinde ücretsiz giriş ve çıkış tokenları.",
+    summary: "Free input and output tokens on selected Flash models.",
+    summaryKey: "freeGeminiSummary",
     signupUrl: "https://aistudio.google.com/app/apikey",
     docsUrl: "https://ai.google.dev/gemini-api/docs/pricing",
     tokenRequired: true,
@@ -29,33 +33,40 @@ export const FREE_PROVIDER_CATALOG: FreeProviderOffer[] = [
   {
     id: "openrouter",
     name: "OpenRouter Free Router",
-    summary: "openrouter/free ile mevcut ücretsiz modeller arasında otomatik seçim.",
+    summary: "Automatic routing across currently available free models.",
+    summaryKey: "freeOpenRouterSummary",
     signupUrl: "https://openrouter.ai/settings/keys",
     docsUrl: "https://openrouter.ai/openrouter/free",
     tokenRequired: true,
   },
   {
     id: "ollama",
-    name: "Ollama Yerel",
-    summary: "API tokenı ve internet gerektirmeden bilgisayarda çalışan tamamen yerel modeller.",
+    name: "Ollama Local",
+    summary: "Fully local models that need neither an API token nor internet access.",
+    summaryKey: "freeOllamaSummary",
     signupUrl: "https://ollama.com/download",
     docsUrl: "https://docs.ollama.com/api/introduction",
     tokenRequired: false,
   },
 ];
 
-export const FREE_CATALOG_VERIFIED_AT = "27 Temmuz 2026";
+export const FREE_CATALOG_VERIFIED_AT = "2026-07-27";
 
-export function catalogLines(credentials: StoredCredential[]): string[] {
+export function catalogLines(
+  credentials: StoredCredential[],
+  language: SoleilLanguage = "en",
+): string[] {
   return FREE_PROVIDER_CATALOG.flatMap((offer, index) => {
     const connected =
       offer.id === "ollama"
-        ? "yerel kurulum"
-        : `${credentials.filter((item) => item.provider === offer.id).length} token bağlı`;
+        ? translate(language, "localInstall")
+        : translate(language, "tokensConnected", {
+            count: credentials.filter((item) => item.provider === offer.id).length,
+          });
     return [
       `${index + 1}. ${offer.name} · ${connected}`,
-      `   ${offer.summary}`,
-      `   Kayıt: ${offer.signupUrl}`,
+      `   ${translate(language, offer.summaryKey)}`,
+      `   ${translate(language, "signup", { url: offer.signupUrl })}`,
     ];
   });
 }

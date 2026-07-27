@@ -1,7 +1,11 @@
 import { homedir } from "node:os";
-import { readFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CredentialVault, type StoredCredential } from "./credentials/vault.js";
+import {
+  isSupportedLanguage,
+  type SoleilLanguage,
+} from "./i18n.js";
 import type {
   ModelDefinition,
   ProviderDefinition,
@@ -12,6 +16,7 @@ import type {
 } from "./types.js";
 
 interface PartialConfig {
+  language?: SoleilLanguage;
   mode?: SoleilMode;
   approval?: "ask" | "always";
   maxAgentSteps?: number;
@@ -35,6 +40,7 @@ interface PartialConfig {
 }
 
 const DEFAULT_CONFIG: Omit<SoleilConfig, "providers"> = {
+  language: "en",
   mode: "auto",
   approval: "ask",
   maxAgentSteps: 12,
@@ -183,7 +189,7 @@ function providerFromEnvironment(credentials: StoredCredential[]): ProviderDefin
   if (genericModel && genericBaseUrl) {
     providers.push({
       id: "custom",
-      displayName: "Özel OpenAI Uyumlu Sunucu",
+      displayName: "Custom OpenAI-compatible server",
       kind: "openai-compatible",
       baseUrl: genericBaseUrl,
       ...(process.env.SOLEIL_API_KEY?.trim()
@@ -231,7 +237,7 @@ function providerFromEnvironment(credentials: StoredCredential[]): ProviderDefin
   for (const entry of environmentProviders) {
     if (!entry.secret) continue;
     seenSecrets.add(entry.secret);
-    providers.push(entry.factory(`${entry.provider}-env`, "CMD ortamı", entry.secret));
+    providers.push(entry.factory(`${entry.provider}-env`, "environment", entry.secret));
   }
 
   for (const credential of credentials) {
@@ -250,7 +256,7 @@ function providerFromEnvironment(credentials: StoredCredential[]): ProviderDefin
   const ollamaModel = process.env.OLLAMA_MODEL?.trim();
   providers.push({
     id: "ollama",
-    displayName: "Ollama Yerel",
+    displayName: "Ollama Local",
     kind: "ollama",
     baseUrl: process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434",
     enabled: true,
@@ -278,7 +284,7 @@ async function readJsonConfig(filePath: string): Promise<PartialConfig | undefin
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === "ENOENT") return undefined;
-    throw new Error(`${filePath} okunamadı: ${error instanceof Error ? error.message : error}`);
+    throw new Error(`${filePath} could not be read: ${error instanceof Error ? error.message : error}`);
   }
 }
 
@@ -319,7 +325,7 @@ export async function loadConfig(
   cwd: string,
   vault = new CredentialVault(),
 ): Promise<SoleilConfig> {
-  const globalPath = path.join(homedir(), ".soleilcode", "config.json");
+  const globalPath = path.join(soleilHome(), "config.json");
   const projectPath = path.join(cwd, ".soleilcode.json");
   const globalConfig = await readJsonConfig(globalPath);
   const projectConfig = await readJsonConfig(projectPath);
@@ -331,10 +337,53 @@ export async function loadConfig(
   providers = mergeProviders(providers, projectConfig?.providers);
 
   return {
+    language: isSupportedLanguage(combined.language)
+      ? combined.language
+      : DEFAULT_CONFIG.language,
     mode: combined.mode || DEFAULT_CONFIG.mode,
     approval: combined.approval || DEFAULT_CONFIG.approval,
     maxAgentSteps: combined.maxAgentSteps || DEFAULT_CONFIG.maxAgentSteps,
     commandTimeoutMs: combined.commandTimeoutMs || DEFAULT_CONFIG.commandTimeoutMs,
     providers,
   };
+}
+
+function soleilHome(): string {
+  return path.resolve(
+    process.env.SOLEILCODE_HOME?.trim() || path.join(homedir(), ".soleilcode"),
+  );
+}
+
+export async function saveGlobalLanguage(
+  language: SoleilLanguage,
+  directory = soleilHome(),
+): Promise<void> {
+  const targetDirectory = path.resolve(directory);
+  const filePath = path.join(targetDirectory, "config.json");
+  let document: Record<string, unknown> = {};
+  try {
+    const raw = await readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      document = parsed as Record<string, unknown>;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw new Error(
+        `${filePath} could not be read: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+  }
+
+  document.language = language;
+  await mkdir(targetDirectory, { recursive: true, mode: 0o700 });
+  await writeFile(filePath, `${JSON.stringify(document, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  });
+  try {
+    await chmod(filePath, 0o600);
+  } catch {
+    // Some Windows filesystems ignore POSIX modes.
+  }
 }

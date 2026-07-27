@@ -35,7 +35,7 @@ function toInteger(value: unknown, fallback: number): number {
 function clip(value: string, limit = MAX_TOOL_OUTPUT): string {
   return value.length <= limit
     ? value
-    : `${value.slice(0, limit)}\n\n… çıktı ${value.length - limit} karakter kısaltıldı`;
+    : `${value.slice(0, limit)}\n\n… output truncated by ${value.length - limit} characters`;
 }
 
 export class ToolManager {
@@ -64,7 +64,7 @@ export class ToolManager {
         case "git_diff":
           return await this.gitDiff();
         default:
-          return { ok: false, output: `Bilinmeyen araç: ${call.tool}` };
+          return { ok: false, output: `Unknown tool: ${call.tool}` };
       }
     } catch (error) {
       return {
@@ -75,11 +75,11 @@ export class ToolManager {
   }
 
   private resolveSafe(input: unknown): string {
-    if (typeof input !== "string" || !input.trim()) throw new Error("Geçerli bir yol gerekli.");
+    if (typeof input !== "string" || !input.trim()) throw new Error("A valid path is required.");
     const absolute = path.resolve(this.root, input);
     const relative = path.relative(this.root, absolute);
     if (relative.startsWith("..") || path.isAbsolute(relative)) {
-      throw new Error("Proje klasörünün dışına erişim engellendi.");
+      throw new Error("Access outside the project directory is blocked.");
     }
     const pieces = relative.split(path.sep);
     if (
@@ -90,7 +90,7 @@ export class ToolManager {
           /\.(?:pem|key|p12|pfx)$/i.test(piece),
       )
     ) {
-      throw new Error("Gizli veya dahili dosyaya erişim engellendi.");
+      throw new Error("Access to secret or internal files is blocked.");
     }
     return absolute;
   }
@@ -115,17 +115,17 @@ export class ToolManager {
     };
 
     await walk(start, 0);
-    if (lines.length >= 800) lines.push("… dosya listesi 800 öğede sınırlandı");
-    return { ok: true, output: lines.join("\n") || "(klasör boş)" };
+    if (lines.length >= 800) lines.push("… file list limited to 800 entries");
+    return { ok: true, output: lines.join("\n") || "(empty directory)" };
   }
 
   private async readFile(args: Record<string, unknown>): Promise<ToolResult> {
     const absolute = this.resolveSafe(args.path);
     const info = await stat(absolute);
-    if (!info.isFile()) throw new Error("İstenen yol bir dosya değil.");
-    if (info.size > MAX_FILE_BYTES) throw new Error("Dosya güvenli okuma sınırından büyük.");
+    if (!info.isFile()) throw new Error("The requested path is not a file.");
+    if (info.size > MAX_FILE_BYTES) throw new Error("The file exceeds the safe read limit.");
     const content = await readFile(absolute, "utf8");
-    if (content.includes("\u0000")) throw new Error("İkili dosya okunamaz.");
+    if (content.includes("\u0000")) throw new Error("Binary files cannot be read.");
     const lines = content.split(/\r?\n/);
     const startLine = Math.max(1, toInteger(args.startLine, 1));
     const endLine = Math.min(
@@ -138,12 +138,12 @@ export class ToolManager {
       .join("\n");
     return {
       ok: true,
-      output: clip(`${path.relative(this.root, absolute)} (${lines.length} satır)\n${selected}`),
+      output: clip(`${path.relative(this.root, absolute)} (${lines.length} lines)\n${selected}`),
     };
   }
 
   private async searchText(args: Record<string, unknown>): Promise<ToolResult> {
-    if (typeof args.query !== "string" || !args.query) throw new Error("Arama metni gerekli.");
+    if (typeof args.query !== "string" || !args.query) throw new Error("A search query is required.");
     const start = this.resolveSafe(typeof args.path === "string" ? args.path : ".");
     const needle = args.query.toLocaleLowerCase();
     const matches: string[] = [];
@@ -178,58 +178,58 @@ export class ToolManager {
     };
 
     await walk(start);
-    if (matches.length >= 200) matches.push("… sonuçlar 200 eşleşmede sınırlandı");
-    return { ok: true, output: matches.join("\n") || "Eşleşme bulunamadı." };
+    if (matches.length >= 200) matches.push("… results limited to 200 matches");
+    return { ok: true, output: matches.join("\n") || "No matches found." };
   }
 
   private async writeFile(args: Record<string, unknown>): Promise<ToolResult> {
     const absolute = this.resolveSafe(args.path);
-    if (typeof args.content !== "string") throw new Error("Dosya içeriği gerekli.");
+    if (typeof args.content !== "string") throw new Error("File content is required.");
     if (Buffer.byteLength(args.content, "utf8") > MAX_FILE_BYTES) {
-      throw new Error("Yazılacak dosya güvenli boyut sınırından büyük.");
+      throw new Error("The file exceeds the safe write limit.");
     }
     const relative = path.relative(this.root, absolute);
     const approved =
       this.autoApprove ||
       (await this.confirm(
-        `${relative} dosyası yazılsın mı?`,
+        `Write ${relative}?`,
         clip(args.content, 3_000),
       ));
-    if (!approved) return { ok: false, denied: true, output: "Kullanıcı yazma işlemini reddetti." };
+    if (!approved) return { ok: false, denied: true, output: "The user denied the write operation." };
     await mkdir(path.dirname(absolute), { recursive: true });
     await writeFile(absolute, args.content, "utf8");
-    return { ok: true, output: `${relative} yazıldı (${args.content.length} karakter).` };
+    return { ok: true, output: `${relative} written (${args.content.length} characters).` };
   }
 
   private async replaceInFile(args: Record<string, unknown>): Promise<ToolResult> {
     const absolute = this.resolveSafe(args.path);
     if (typeof args.oldText !== "string" || typeof args.newText !== "string") {
-      throw new Error("oldText ve newText metinleri gerekli.");
+      throw new Error("oldText and newText are required.");
     }
     const content = await readFile(absolute, "utf8");
     const occurrences = content.split(args.oldText).length - 1;
-    if (occurrences === 0) throw new Error("Değiştirilecek tam metin dosyada bulunamadı.");
+    if (occurrences === 0) throw new Error("The exact text to replace was not found.");
     if (occurrences > 1) {
-      throw new Error(`Değiştirilecek metin ${occurrences} kez bulunuyor; daha özgün bağlam gerekli.`);
+      throw new Error(`The text appears ${occurrences} times; provide more specific context.`);
     }
     const relative = path.relative(this.root, absolute);
-    const preview = `--- eski\n${clip(args.oldText, 1_500)}\n+++ yeni\n${clip(args.newText, 1_500)}`;
+    const preview = `--- old\n${clip(args.oldText, 1_500)}\n+++ new\n${clip(args.newText, 1_500)}`;
     const approved =
-      this.autoApprove || (await this.confirm(`${relative} değiştirilsin mi?`, preview));
+      this.autoApprove || (await this.confirm(`Update ${relative}?`, preview));
     if (!approved) {
-      return { ok: false, denied: true, output: "Kullanıcı değiştirme işlemini reddetti." };
+      return { ok: false, denied: true, output: "The user denied the edit operation." };
     }
     await writeFile(absolute, content.replace(args.oldText, args.newText), "utf8");
-    return { ok: true, output: `${relative} güncellendi.` };
+    return { ok: true, output: `${relative} updated.` };
   }
 
   private async runCommand(args: Record<string, unknown>): Promise<ToolResult> {
     if (typeof args.command !== "string" || !args.command.trim()) {
-      throw new Error("Çalıştırılacak komut gerekli.");
+      throw new Error("A command is required.");
     }
     const approved =
-      this.autoApprove || (await this.confirm("Bu komut çalıştırılsın mı?", args.command));
-    if (!approved) return { ok: false, denied: true, output: "Kullanıcı komutu reddetti." };
+      this.autoApprove || (await this.confirm("Run this command?", args.command));
+    if (!approved) return { ok: false, denied: true, output: "The user denied the command." };
     try {
       const result = await execAsync(args.command, {
         cwd: this.root,
@@ -239,7 +239,7 @@ export class ToolManager {
       });
       return {
         ok: true,
-        output: clip([result.stdout, result.stderr].filter(Boolean).join("\n").trim() || "(çıktı yok)"),
+        output: clip([result.stdout, result.stderr].filter(Boolean).join("\n").trim() || "(no output)"),
       };
     } catch (error) {
       const detail = error as Error & { stdout?: string; stderr?: string; code?: number };
@@ -247,7 +247,7 @@ export class ToolManager {
         ok: false,
         output: clip(
           [
-            `Komut başarısız${detail.code !== undefined ? ` (kod ${detail.code})` : ""}.`,
+            `Command failed${detail.code !== undefined ? ` (code ${detail.code})` : ""}.`,
             detail.stdout,
             detail.stderr,
             detail.message,
@@ -267,11 +267,11 @@ export class ToolManager {
         maxBuffer: 2 * 1024 * 1024,
         windowsHide: true,
       });
-      return { ok: true, output: clip(result.stdout || "(değişiklik yok)") };
+      return { ok: true, output: clip(result.stdout || "(no changes)") };
     } catch (error) {
       return {
         ok: false,
-        output: `Git farkı alınamadı: ${error instanceof Error ? error.message : error}`,
+        output: `Could not read the Git diff: ${error instanceof Error ? error.message : error}`,
       };
     }
   }

@@ -1,6 +1,12 @@
 import { createInterface, type Interface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 import { Writable } from "node:stream";
+import {
+  LANGUAGE_NAMES,
+  translate,
+  type MessageKey,
+  type SoleilLanguage,
+} from "./i18n.js";
 
 const ansi = {
   reset: "\u001b[0m",
@@ -50,6 +56,8 @@ export class TerminalUI {
   private header?: HeaderState;
   private screenActive = false;
 
+  constructor(private language: SoleilLanguage = "en") {}
+
   private readonly handleResize = (): void => {
     if (!this.screenActive) return;
     this.configureScrollRegion();
@@ -83,11 +91,11 @@ export class TerminalUI {
     const bottom = `╰${"─".repeat(innerWidth)}╯`;
     const row = (content: string): string =>
       `${paint(ansi.accent, "│")}${this.fit(content, innerWidth)}${paint(ansi.accent, "│")}`;
-    const status = `SoleilRelay · ${header.mode} · ${header.modelCount} model hazır`;
-    const help = `${paint(ansi.gray, "/help")} komutlar  ${paint(ansi.gray, "·")}  ${paint(ansi.gray, "Ctrl+C")} durdur  ${paint(ansi.gray, "·")}  ${paint(ansi.gray, "/exit")} çıkış`;
+    const status = `SoleilRelay · ${header.mode} · ${this.text("modelsReady", { count: header.modelCount })} · ${this.language.toUpperCase()}`;
+    const help = `${paint(ansi.gray, "/help")} ${this.text("commands")}  ${paint(ansi.gray, "·")}  ${paint(ansi.gray, "Ctrl+C")} ${this.text("stop")}  ${paint(ansi.gray, "·")}  ${paint(ansi.gray, "/exit")} ${this.text("exit")}`;
     return [
       paint(ansi.accent, top),
-      row("   /\\_/\\      SoleilCode · Free-first AI coding agent"),
+      row(`   /\\_/\\      SoleilCode · ${this.text("appTagline")}`),
       row(`  ( •.• )     ${status}`),
       row(`  / >☀        ${header.root}`),
       paint(ansi.accent, bottom),
@@ -155,6 +163,26 @@ export class TerminalUI {
     if (this.screenActive) this.renderPersistentHeader(true);
   }
 
+  getLanguage(): SoleilLanguage {
+    return this.language;
+  }
+
+  setLanguage(language: SoleilLanguage): void {
+    this.language = language;
+    if (this.screenActive) this.renderPersistentHeader(true);
+  }
+
+  text(
+    key: MessageKey,
+    variables: Record<string, string | number> = {},
+  ): string {
+    return translate(this.language, key, variables);
+  }
+
+  languageName(): string {
+    return LANGUAGE_NAMES[this.language];
+  }
+
   async prompt(): Promise<string> {
     return (await this.rl.question(paint(ansi.bold + ansi.accent, "❯ "))).trim();
   }
@@ -183,8 +211,8 @@ export class TerminalUI {
     for (let index = 0; index < options.length; index += 1) {
       console.log(`  ${paint(ansi.accent, String(index + 1))}  ${options[index]}`);
     }
-    console.log(`  ${paint(ansi.gray, "0")}  Geri dön`);
-    const answer = await this.ask("Seçim");
+    console.log(`  ${paint(ansi.gray, "0")}  ${this.text("back")}`);
+    const answer = await this.ask(this.text("selection"));
     const selected = Number(answer);
     if (!Number.isInteger(selected) || selected <= 0 || selected > options.length) {
       return undefined;
@@ -203,17 +231,19 @@ export class TerminalUI {
   async confirm(question: string, preview?: string): Promise<boolean> {
     this.stopSpinner();
     console.log("");
-    console.log(paint(ansi.accent, `╭─ İzin gerekli`));
+    console.log(paint(ansi.accent, `╭─ ${this.text("permissionRequired")}`));
     console.log(`${paint(ansi.accent, "│")} ${question}`);
     if (preview) {
       const previewLines = preview.split(/\r?\n/);
       for (const line of previewLines) console.log(`${paint(ansi.accent, "│")} ${paint(ansi.dim, line)}`);
     }
     console.log(paint(ansi.accent, "╰─"));
-    const answer = (await this.rl.question(paint(ansi.bold + ansi.accent, "Uygula? [e/H] ❯ ")))
+    const answer = (await this.rl.question(
+      paint(ansi.bold + ansi.accent, `${this.text("applyPrompt")} ❯ `),
+    ))
       .trim()
-      .toLocaleLowerCase("tr-TR");
-    return answer === "e" || answer === "evet" || answer === "y" || answer === "yes";
+      .toLocaleLowerCase();
+    return ["e", "evet", "y", "yes", "s", "si", "sí", "o", "oui", "j", "ja", "д", "да"].includes(answer);
   }
 
   startThinking(): void {
@@ -222,7 +252,7 @@ export class TerminalUI {
     this.spinner = setInterval(() => {
       const frame = frames[this.spinnerIndex % frames.length];
       this.spinnerIndex += 1;
-      stdout.write(`\r${paint(ansi.accent, `${frame} Soleil düşünüyor…`)}`);
+      stdout.write(`\r${paint(ansi.accent, `${frame} ${this.text("thinking")}`)}`);
     }, 120);
   }
 
@@ -268,7 +298,7 @@ export class TerminalUI {
 
   error(value: string): void {
     this.stopSpinner();
-    console.error(`${paint(ansi.red, "  ⎿ Hata:")} ${value}`);
+    console.error(`${paint(ansi.red, `  ⎿ ${this.text("errorLabel")}`)} ${value}`);
   }
 
   close(): void {

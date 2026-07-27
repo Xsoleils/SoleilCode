@@ -33,6 +33,7 @@ test("relay falls back from a failing free provider", async (context) => {
   const baseUrl = `http://127.0.0.1:${address.port}/v1`;
 
   const config: SoleilConfig = {
+    language: "en",
     mode: "free",
     approval: "ask",
     maxAgentSteps: 5,
@@ -85,6 +86,7 @@ test("relay falls back from a failing free provider", async (context) => {
 
 test("private mode refuses cloud-only models", async () => {
   const config: SoleilConfig = {
+    language: "en",
     mode: "private",
     approval: "ask",
     maxAgentSteps: 5,
@@ -112,7 +114,7 @@ test("private mode refuses cloud-only models", async () => {
   const relay = new SoleilRelay(config);
   await assert.rejects(
     relay.chat([{ role: "user", content: "test" }]),
-    /yerel model bulunamadı/,
+    /No working local model/,
   );
 });
 
@@ -139,6 +141,7 @@ test("relay respects short provider retry delay and retries once", async (contex
   context.after(() => server.close());
   const address = server.address() as AddressInfo;
   const config: SoleilConfig = {
+    language: "en",
     mode: "free",
     approval: "ask",
     maxAgentSteps: 3,
@@ -185,6 +188,7 @@ test("relay changes model priority according to task strength", async (context) 
   context.after(() => server.close());
   const address = server.address() as AddressInfo;
   const config: SoleilConfig = {
+    language: "en",
     mode: "free",
     approval: "ask",
     maxAgentSteps: 3,
@@ -222,5 +226,5 @@ test("relay changes model priority according to task strength", async (context) 
   const relay = new SoleilRelay(config);
   const result = await relay.chat([{ role: "user", content: "incele" }], undefined, "review");
   assert.equal(result.decision.model.id, "code-reviewer");
-  assert.match(result.decision.reason, /kod inceleme/);
+  assert.match(result.decision.reason, /code review/);
 });

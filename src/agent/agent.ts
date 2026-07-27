@@ -4,6 +4,7 @@ import type { ChatMessage, RelayResult, ToolResult } from "../types.js";
 import { SoleilRelay } from "../relay/relay.js";
 import { ToolManager } from "../tools/tool-manager.js";
 import { classifyTask } from "../relay/task-classifier.js";
+import { translate, type SoleilLanguage } from "../i18n.js";
 
 export interface AgentEvents {
   onThinking?: () => void;
@@ -21,19 +22,45 @@ export class SoleilAgent {
     private readonly tools: ToolManager,
     private readonly maxSteps: number,
     private readonly events: AgentEvents = {},
+    private language: SoleilLanguage = "en",
   ) {}
 
   clear(): void {
     this.conversation = [];
   }
 
+  setLanguage(language: SoleilLanguage): void {
+    this.language = language;
+  }
+
   async run(input: string, signal?: AbortSignal): Promise<string> {
     const normalized = input
       .trim()
-      .toLocaleLowerCase("tr-TR")
+      .toLocaleLowerCase()
       .replace(/[!?.…]+$/g, "");
-    if (["selam", "merhaba", "hey", "hi", "hello", "sa", "selamlar"].includes(normalized)) {
-      return "Selam! ☀ Bugün hangi proje veya kodlama görevi üzerinde çalışalım?";
+    if (
+      [
+        "selam",
+        "merhaba",
+        "hey",
+        "hi",
+        "hello",
+        "sa",
+        "selamlar",
+        "hola",
+        "bonjour",
+        "salut",
+        "hallo",
+        "ciao",
+        "olá",
+        "ola",
+        "привет",
+        "здравствуйте",
+        "こんにちは",
+        "안녕하세요",
+      ].includes(normalized)
+    ) {
+      return translate(this.language, "greeting");
     }
     const task = classifyTask(input);
 
@@ -68,8 +95,6 @@ export class SoleilAgent {
       });
     }
 
-    throw new Error(
-      `Ajan ${this.maxSteps} adım sınırına ulaştı. Görevi daha küçük bir parçaya bölmeyi deneyin.`,
-    );
+    throw new Error(translate(this.language, "maxSteps", { count: this.maxSteps }));
   }
 }

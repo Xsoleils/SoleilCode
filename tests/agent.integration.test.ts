@@ -22,12 +22,12 @@ test("agent completes a tool loop through SoleilRelay", async (context) => {
           ? JSON.stringify({
               type: "tool",
               tool: "write_file",
-              arguments: { path: "hello.txt", content: "Soleil doğdu.\n" },
-              reason: "İstenen dosyayı oluşturuyorum",
+              arguments: { path: "hello.txt", content: "Soleil was born.\n" },
+              reason: "Creating the requested file",
             })
           : JSON.stringify({
               type: "final",
-              message: "hello.txt oluşturuldu.",
+              message: "hello.txt created.",
             });
       response.end(JSON.stringify({ choices: [{ message: { content } }] }));
     });
@@ -39,6 +39,7 @@ test("agent completes a tool loop through SoleilRelay", async (context) => {
   context.after(() => rm(root, { recursive: true, force: true }));
 
   const config: SoleilConfig = {
+    language: "en",
     mode: "free",
     approval: "ask",
     maxAgentSteps: 4,
@@ -67,9 +68,9 @@ test("agent completes a tool loop through SoleilRelay", async (context) => {
   const relay = new SoleilRelay(config);
   const tools = new ToolManager(root, async () => true, false, 5_000);
   const agent = new SoleilAgent(root, relay, tools, 4);
-  const result = await agent.run("hello.txt oluştur");
+  const result = await agent.run("create hello.txt");
 
-  assert.equal(result, "hello.txt oluşturuldu.");
-  assert.equal(await readFile(path.join(root, "hello.txt"), "utf8"), "Soleil doğdu.\n");
+  assert.equal(result, "hello.txt created.");
+  assert.equal(await readFile(path.join(root, "hello.txt"), "utf8"), "Soleil was born.\n");
   assert.equal(callCount, 2);
 });

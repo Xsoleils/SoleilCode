@@ -1,3 +1,5 @@
+import type { SoleilLanguage } from "./i18n.js";
+
 export type SoleilMode = "auto" | "free" | "local" | "private";
 
 export type ProviderKind = "openai-compatible" | "gemini" | "ollama";
@@ -90,6 +92,7 @@ export interface RelayResult extends ChatResponse {
 }
 
 export interface SoleilConfig {
+  language: SoleilLanguage;
   mode: SoleilMode;
   approval: "ask" | "always";
   maxAgentSteps: number;

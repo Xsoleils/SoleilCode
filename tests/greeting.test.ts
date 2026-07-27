@@ -12,6 +12,7 @@ test("simple greeting consumes no model request", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "soleil-greeting-"));
   try {
     const config: SoleilConfig = {
+      language: "en",
       mode: "free",
       approval: "ask",
       maxAgentSteps: 3,
@@ -21,6 +22,8 @@ test("simple greeting consumes no model request", async () => {
     const relay = new SoleilRelay(config);
     const tools = new ToolManager(root, async () => true, true, 5_000);
     const agent = new SoleilAgent(root, relay, tools, 3);
+    assert.match(await agent.run("hello"), /Hello!/);
+    agent.setLanguage("tr");
     assert.match(await agent.run("selam"), /Selam!/);
   } finally {
     await rm(root, { recursive: true, force: true });

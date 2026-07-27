@@ -1,0 +1,49 @@
+name: Bug report
+description: Report reproducible incorrect behavior in SoleilCode
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve SoleilCode. Do not include API keys, private source code, or account details.
+  - type: input
+    id: version
+    attributes:
+      label: SoleilCode version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Terminal
+      options:
+        - Windows CMD
+        - PowerShell
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Run ...
+        2. Enter ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Include relevant output with all secrets and private paths removed.
+      render: shell

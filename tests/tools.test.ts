@@ -8,7 +8,7 @@ import { ToolManager } from "../src/tools/tool-manager.js";
 test("tools stay inside project and can edit with approval", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "soleil-tools-"));
   try {
-    await writeFile(path.join(root, "hello.txt"), "merhaba dünya\n", "utf8");
+    await writeFile(path.join(root, "hello.txt"), "hello world\n", "utf8");
     const manager = new ToolManager(root, async () => true, false, 5_000);
 
     const read = await manager.execute({
@@ -17,19 +17,19 @@ test("tools stay inside project and can edit with approval", async () => {
       arguments: { path: "hello.txt" },
     });
     assert.equal(read.ok, true);
-    assert.match(read.output, /merhaba dünya/);
+    assert.match(read.output, /hello world/);
 
     const edit = await manager.execute({
       type: "tool",
       tool: "replace_in_file",
       arguments: {
         path: "hello.txt",
-        oldText: "merhaba",
-        newText: "selam",
+        oldText: "hello",
+        newText: "hi",
       },
     });
     assert.equal(edit.ok, true);
-    assert.equal(await readFile(path.join(root, "hello.txt"), "utf8"), "selam dünya\n");
+    assert.equal(await readFile(path.join(root, "hello.txt"), "utf8"), "hi world\n");
 
     const escape = await manager.execute({
       type: "tool",
@@ -37,7 +37,7 @@ test("tools stay inside project and can edit with approval", async () => {
       arguments: { path: "../outside.txt" },
     });
     assert.equal(escape.ok, false);
-    assert.match(escape.output, /dışına erişim engellendi/);
+    assert.match(escape.output, /outside the project directory/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -54,7 +54,7 @@ test("secret files are blocked", async () => {
       arguments: { path: ".env.local" },
     });
     assert.equal(result.ok, false);
-    assert.match(result.output, /Gizli/);
+    assert.match(result.output, /secret or internal files/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

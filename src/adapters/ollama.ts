@@ -41,11 +41,11 @@ export class OllamaAdapter implements ProviderAdapter {
     try {
       payload = JSON.parse(raw) as OllamaChatResponse;
     } catch {
-      throw new Error(`Geçersiz Ollama yanıtı (${response.status}): ${raw.slice(0, 300)}`);
+      throw new Error(`Invalid Ollama response (${response.status}): ${raw.slice(0, 300)}`);
     }
     if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
     const content = payload.message?.content?.trim();
-    if (!content) throw new Error("Yerel model boş yanıt döndürdü.");
+    if (!content) throw new Error("The local model returned an empty response.");
     return {
       content,
       usage: {

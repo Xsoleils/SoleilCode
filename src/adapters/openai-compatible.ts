@@ -24,7 +24,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       headers: {
         "content-type": "application/json",
         ...(provider.apiKey ? { authorization: `Bearer ${provider.apiKey}` } : {}),
-        "user-agent": "SoleilCode/0.1",
+        "user-agent": "SoleilCode/0.3",
       },
       body: JSON.stringify({
         model: request.model.id,
@@ -40,7 +40,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     try {
       payload = JSON.parse(raw) as OpenAIResponse;
     } catch {
-      throw new Error(`Geçersiz sağlayıcı yanıtı (${response.status}): ${raw.slice(0, 300)}`);
+      throw new Error(`Invalid provider response (${response.status}): ${raw.slice(0, 300)}`);
     }
 
     if (!response.ok) {
@@ -52,7 +52,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
     }
 
     const content = payload.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Model boş yanıt döndürdü.");
+    if (!content) throw new Error("The model returned an empty response.");
 
     const input = payload.usage?.prompt_tokens;
     const output = payload.usage?.completion_tokens;
