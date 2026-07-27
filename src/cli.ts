@@ -2,7 +2,14 @@
 
 import path from "node:path";
 import process from "node:process";
+import { readFile } from "node:fs/promises";
 import { SoleilAgent } from "./agent/agent.js";
+import {
+  formatBenchmarkReport,
+  runBenchmark,
+  type BenchmarkSuite,
+} from "./benchmark/runner.js";
+import { CheckpointManager } from "./checkpoints/checkpoint-manager.js";
 import { loadConfig, saveGlobalLanguage } from "./config.js";
 import { CredentialVault } from "./credentials/vault.js";
 import { catalogLines, FREE_CATALOG_VERIFIED_AT } from "./free-catalog.js";
@@ -17,10 +24,10 @@ import { SoleilRelay } from "./relay/relay.js";
 import { runLanguagePicker } from "./setup/language-picker.js";
 import { runSetupCenter, tokenLines } from "./setup/setup-center.js";
 import { ToolManager } from "./tools/tool-manager.js";
-import type { SoleilMode } from "./types.js";
+import type { RelayResult, SoleilMode, ToolResult } from "./types.js";
 import { TerminalUI } from "./ui.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 const MODES = new Set<SoleilMode>(["auto", "free", "local", "private"]);
 
 interface CliOptions {
@@ -28,7 +35,12 @@ interface CliOptions {
   autoApprove: boolean;
   mode?: SoleilMode;
   language?: SoleilLanguage;
-  command?: "help" | "version" | "doctor" | "setup" | "language";
+  command?: "help" | "version" | "doctor" | "setup" | "language" | "run" | "bench";
+  prompt?: string;
+  promptFile?: string;
+  json: boolean;
+  runs: number;
+  suite: BenchmarkSuite;
 }
 
 function parseArguments(argv: string[]): CliOptions {
@@ -37,15 +49,23 @@ function parseArguments(argv: string[]): CliOptions {
   let mode: SoleilMode | undefined;
   let language: SoleilLanguage | undefined;
   let command: CliOptions["command"];
+  let promptFile: string | undefined;
+  let json = false;
+  let runs = 1;
+  let suite: BenchmarkSuite = "core";
+  const promptParts: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === "--help" || value === "-h") command = "help";
     else if (value === "--version" || value === "-v") command = "version";
-    else if (value === "doctor") command = "doctor";
-    else if (value === "setup") command = "setup";
-    else if (value === "language" || value === "languages") command = "language";
+    else if (!command && value === "doctor") command = "doctor";
+    else if (!command && value === "setup") command = "setup";
+    else if (!command && (value === "language" || value === "languages")) command = "language";
+    else if (!command && value === "run") command = "run";
+    else if (!command && (value === "bench" || value === "benchmark")) command = "bench";
     else if (value === "--yes" || value === "-y") autoApprove = true;
+    else if (value === "--json") json = true;
     else if (value === "--cwd") {
       const next = argv[index + 1];
       if (!next) throw new Error("--cwd requires a project directory.");
@@ -67,15 +87,43 @@ function parseArguments(argv: string[]): CliOptions {
       }
       language = next;
       index += 1;
+    } else if (value === "--prompt-file") {
+      const next = argv[index + 1];
+      if (!next) throw new Error("--prompt-file requires a file path.");
+      promptFile = path.resolve(next);
+      index += 1;
+    } else if (value === "--runs") {
+      const next = Number(argv[index + 1]);
+      if (!Number.isInteger(next) || next < 1 || next > 10) {
+        throw new Error("--runs must be an integer from 1 to 10.");
+      }
+      runs = next;
+      index += 1;
+    } else if (value === "--suite") {
+      const next = argv[index + 1];
+      if (next !== "smoke" && next !== "core") {
+        throw new Error("--suite must be smoke or core.");
+      }
+      suite = next;
+      index += 1;
+    } else if (command === "run" && value && !value.startsWith("-")) {
+      promptParts.push(value);
+    } else if (value?.startsWith("-")) {
+      throw new Error(`Unknown option: ${value}`);
     }
   }
 
   return {
     cwd,
     autoApprove,
+    json,
+    runs,
+    suite,
     ...(mode ? { mode } : {}),
     ...(language ? { language } : {}),
     ...(command ? { command } : {}),
+    ...(promptParts.length ? { prompt: promptParts.join(" ") } : {}),
+    ...(promptFile ? { promptFile } : {}),
   };
 }
 
@@ -92,17 +140,25 @@ Usage:
   soleil doctor
   soleil setup
   soleil language
+  soleil run "TASK" --yes --json
+  soleil bench [--suite smoke|core] [--runs N] [--json]
 
 Commands:
   doctor            Check providers and discovered models
   setup             Open the free-model and token center
   language          Choose and save the interface language
+  run               Execute one non-interactive agent task
+  bench             Run SoleilBench in isolated temporary projects
 
 Options:
   --cwd DIRECTORY   Project directory to work in
   --mode MODE       auto, free, local, or private
   --language CODE   ${SUPPORTED_LANGUAGES.join(", ")}
   --yes, -y         Automatically approve file and command operations
+  --json             Emit machine-readable JSON for run or bench
+  --prompt-file FILE Read a headless task from a UTF-8 file
+  --suite NAME       Benchmark suite: smoke or core
+  --runs N           Benchmark repetitions (1-10)
   --version, -v     Show the version
   --help, -h        Show help
 
@@ -115,6 +171,8 @@ Interactive:
   /free             ${tr("helpFree")}
   /language         ${tr("helpLanguage")}
   /mode MODE        ${tr("helpMode")}
+  /undo             ${tr("helpUndo")}
+  /checkpoints      ${tr("helpCheckpoints")}
   /clear            ${tr("helpClear")}
   /exit             ${tr("helpExit")}
 
@@ -209,6 +267,126 @@ async function language(options: CliOptions): Promise<void> {
   }
 }
 
+async function headless(options: CliOptions): Promise<void> {
+  const prompt = options.promptFile
+    ? (await readFile(options.promptFile, "utf8")).trim()
+    : options.prompt?.trim();
+  if (!prompt) {
+    throw new Error('The run command needs a task, for example: soleil run "fix the tests" --yes --json');
+  }
+
+  const startedAt = new Date().toISOString();
+  const started = Date.now();
+  const config = await loadConfig(options.cwd);
+  if (options.mode) config.mode = options.mode;
+  if (options.language) config.language = options.language;
+  const relay = new SoleilRelay(config);
+  await relay.initialize();
+  const checkpoints = new CheckpointManager(options.cwd);
+  const existingCheckpointIds = new Set(
+    (await checkpoints.list()).map((checkpoint) => checkpoint.id),
+  );
+  const modelEvents: Array<{
+    provider: string;
+    model: string;
+    usage?: RelayResult["usage"];
+    attempts: RelayResult["attempts"];
+  }> = [];
+  const toolEvents: Array<{
+    name: string;
+    reason?: string;
+    result?: ToolResult;
+  }> = [];
+  let protocolRepairs = 0;
+  let pendingTool: { name: string; reason?: string } | undefined;
+  const tools = new ToolManager(
+    options.cwd,
+    async () => false,
+    options.autoApprove || config.approval === "always",
+    config.commandTimeoutMs,
+    checkpoints,
+  );
+  const agent = new SoleilAgent(
+    options.cwd,
+    relay,
+    tools,
+    config.maxAgentSteps,
+    {
+      onModelSelected: (result) => modelEvents.push({
+        provider: result.decision.provider.id,
+        model: result.decision.model.id,
+        ...(result.usage ? { usage: result.usage } : {}),
+        attempts: result.attempts,
+      }),
+      onTool: (name, reason) => {
+        pendingTool = { name, ...(reason ? { reason } : {}) };
+      },
+      onToolResult: (name, result) => {
+        toolEvents.push({
+          name,
+          ...(pendingTool?.name === name && pendingTool.reason
+            ? { reason: pendingTool.reason }
+            : {}),
+          result,
+        });
+        pendingTool = undefined;
+      },
+      onProtocolRepair: () => {
+        protocolRepairs += 1;
+      },
+    },
+    config.language,
+    checkpoints,
+  );
+
+  try {
+    const answer = await agent.run(prompt);
+    const latestCheckpoint = (await checkpoints.list()).find(
+      (checkpoint) => !existingCheckpointIds.has(checkpoint.id),
+    );
+    const result = {
+      version: 1,
+      success: true,
+      startedAt,
+      durationMs: Date.now() - started,
+      cwd: options.cwd,
+      answer,
+      models: modelEvents,
+      tools: toolEvents,
+      protocolRepairs,
+      ...(latestCheckpoint ? { checkpoint: latestCheckpoint } : {}),
+    };
+    console.log(options.json ? JSON.stringify(result, null, 2) : answer);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!options.json) throw error;
+    console.log(JSON.stringify({
+      version: 1,
+      success: false,
+      startedAt,
+      durationMs: Date.now() - started,
+      cwd: options.cwd,
+      error: message,
+      models: modelEvents,
+      tools: toolEvents,
+      protocolRepairs,
+    }, null, 2));
+    process.exitCode = 1;
+  }
+}
+
+async function benchmark(options: CliOptions): Promise<void> {
+  const config = await loadConfig(options.cwd);
+  if (options.mode) config.mode = options.mode;
+  if (options.language) config.language = options.language;
+  const report = await runBenchmark(config, {
+    suite: options.suite,
+    runs: options.runs,
+  });
+  console.log(options.json ? JSON.stringify(report, null, 2) : formatBenchmarkReport(report));
+  if (report.failed) process.exitCode = 1;
+}
+
 async function interactive(options: CliOptions): Promise<void> {
   const config = await loadConfig(options.cwd);
   if (options.mode) config.mode = options.mode;
@@ -218,11 +396,13 @@ async function interactive(options: CliOptions): Promise<void> {
   await relay.initialize();
   const ui = new TerminalUI(config.language);
   let activeController: AbortController | undefined;
+  const checkpoints = new CheckpointManager(options.cwd);
   const tools = new ToolManager(
     options.cwd,
     (question, preview) => ui.confirm(question, preview),
     options.autoApprove || config.approval === "always",
     config.commandTimeoutMs,
+    checkpoints,
   );
   const agent = new SoleilAgent(
     options.cwd,
@@ -241,6 +421,7 @@ async function interactive(options: CliOptions): Promise<void> {
       onToolResult: (_name, result) => ui.toolResult(result.ok, result.output),
     },
     config.language,
+    checkpoints,
   );
 
   const syncLanguage = (next: SoleilLanguage): void => {
@@ -279,6 +460,8 @@ async function interactive(options: CliOptions): Promise<void> {
 /free          ${ui.text("helpFree")}
 /language      ${ui.text("helpLanguage")}
 /mode MODE      ${ui.text("helpMode")}
+/undo          ${ui.text("helpUndo")}
+/checkpoints   ${ui.text("helpCheckpoints")}
 /clear         ${ui.text("helpClear")}
 /exit          ${ui.text("helpExit")}`);
         continue;
@@ -353,6 +536,28 @@ async function interactive(options: CliOptions): Promise<void> {
         continue;
       }
 
+      if (input === "/checkpoints") {
+        const available = await checkpoints.list();
+        ui.answer(
+          available.length
+            ? available
+                .map((item) => `${item.createdAt} · ${item.files} file(s) · ${item.label}`)
+                .join("\n")
+            : "No file checkpoints are available.",
+        );
+        continue;
+      }
+
+      if (input === "/undo") {
+        const undone = await checkpoints.undoLatest();
+        ui.answer(
+          undone
+            ? `Restored ${undone.restored.length} file(s):\n${undone.restored.map((file) => `- ${file}`).join("\n")}`
+            : "No file checkpoint is available to restore.",
+        );
+        continue;
+      }
+
       if (input.startsWith("/mode ")) {
         const requested = input.slice(6).trim() as SoleilMode;
         if (!MODES.has(requested)) {
@@ -396,6 +601,8 @@ async function main(): Promise<void> {
   if (options.command === "doctor") return doctor(options);
   if (options.command === "setup") return setup(options);
   if (options.command === "language") return language(options);
+  if (options.command === "run") return headless(options);
+  if (options.command === "bench") return benchmark(options);
   await interactive(options);
 }
 

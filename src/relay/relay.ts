@@ -14,6 +14,7 @@ import type {
   SoleilConfig,
   SoleilMode,
   TaskKind,
+  ToolDefinition,
 } from "../types.js";
 import { taskLabel } from "./task-classifier.js";
 
@@ -157,6 +158,7 @@ export class SoleilRelay {
     messages: ChatMessage[],
     signal?: AbortSignal,
     task: TaskKind = "chat",
+    tools: ToolDefinition[] = [],
   ): Promise<RelayResult> {
     const candidates = this.decisions(task);
     if (candidates.length === 0) {
@@ -179,13 +181,34 @@ export class SoleilRelay {
       const startedAt = Date.now();
       const state = this.stateFor(decision.provider.id, decision.model.id);
       try {
-        const response = await adapter.chat(decision.provider, {
+        const supportedTools = decision.model.capabilities.includes("tools")
+          ? tools
+          : [];
+        const request = {
           model: decision.model,
           messages,
+          ...(supportedTools.length
+            ? { tools: supportedTools, toolChoice: "auto" as const }
+            : {}),
           temperature: 0.15,
           maxTokens: outputTokenBudget(task),
           ...(signal ? { signal } : {}),
-        });
+        };
+        let response: ChatResponse;
+        try {
+          response = await adapter.chat(decision.provider, request);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (
+            supportedTools.length &&
+            /\b(tool|tools|function calling|parallel_tool|function declaration)\b/i.test(message)
+          ) {
+            const { tools: _tools, toolChoice: _toolChoice, ...fallbackRequest } = request;
+            response = await adapter.chat(decision.provider, fallbackRequest);
+          } else {
+            throw error;
+          }
+        }
         state.successes += 1;
         state.totalLatencyMs += Date.now() - startedAt;
         delete state.lastError;

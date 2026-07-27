@@ -228,3 +228,64 @@ test("relay changes model priority according to task strength", async (context) 
   assert.equal(result.decision.model.id, "code-reviewer");
   assert.match(result.decision.reason, /code review/);
 });
+
+test("relay falls back to text protocol when a route rejects native tools", async (context) => {
+  const requests: Array<{ tools?: unknown[] }> = [];
+  const server = createServer((request, response) => {
+    let body = "";
+    request.on("data", (chunk) => {
+      body += String(chunk);
+    });
+    request.on("end", () => {
+      requests.push(JSON.parse(body) as { tools?: unknown[] });
+      response.setHeader("content-type", "application/json");
+      if (requests.length === 1) {
+        response.statusCode = 400;
+        response.end(JSON.stringify({ error: { message: "tools are not supported by this model" } }));
+        return;
+      }
+      response.end(
+        JSON.stringify({ choices: [{ message: { content: '{"type":"final","message":"fallback ok"}' } }] }),
+      );
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  context.after(() => server.close());
+  const address = server.address() as AddressInfo;
+  const config: SoleilConfig = {
+    language: "en",
+    mode: "free",
+    approval: "ask",
+    maxAgentSteps: 3,
+    commandTimeoutMs: 5_000,
+    providers: [{
+      id: "fallback",
+      displayName: "Fallback",
+      kind: "openai-compatible",
+      baseUrl: `http://127.0.0.1:${address.port}/v1`,
+      enabled: true,
+      models: [{
+        id: "legacy-model",
+        displayName: "Legacy",
+        providerId: "fallback",
+        cost: "free",
+        priority: 100,
+        capabilities: ["chat", "coding", "tools"],
+      }],
+    }],
+  };
+  const relay = new SoleilRelay(config);
+  const result = await relay.chat(
+    [{ role: "user", content: "test" }],
+    undefined,
+    "chat",
+    [{
+      name: "read_file",
+      description: "Read a file",
+      parameters: { type: "object", properties: {} },
+    }],
+  );
+  assert.equal(result.content, '{"type":"final","message":"fallback ok"}');
+  assert.ok(requests[0]?.tools?.length);
+  assert.equal(requests[1]?.tools, undefined);
+});

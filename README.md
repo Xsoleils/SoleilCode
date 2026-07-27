@@ -40,6 +40,14 @@ a different approach:
 - **Ten interface languages** — change language without reinstalling or editing code.
 - **Project-agent behavior** — coding requests inspect the workspace, write real files,
   verify the result, and report exact paths instead of pasting an unfinished code block.
+- **Native tool calling** — Groq, OpenRouter, Gemini, compatible endpoints, and
+  supported Ollama models can call project tools through provider-native functions.
+- **Recoverable edits** — file writes create local checkpoints that can be restored
+  with `/undo`.
+- **Runtime browser checks** — web projects can be opened in an installed Edge,
+  Chrome, or Chromium browser with console errors, interactions, and screenshots.
+- **Automation and evaluation** — `soleil run --json` supports scripts and CI, while
+  `soleil bench` measures real coding-agent behavior in isolated projects.
 
 > SoleilCode is an early-stage project. Review proposed edits and terminal commands
 > before approving them, especially in important repositories.
@@ -49,13 +57,14 @@ a different approach:
 | Area | What is included |
 | --- | --- |
 | Terminal experience | Full-screen green interface, persistent cat header, live model and tool activity |
-| Project tools | List/read/search files, write files, exact text replacement, command execution, Git diff |
+| Project tools | List/read/search files, write/replace, commands, Git diff, real browser verification |
 | Model routing | Groq, Gemini, OpenRouter, Ollama, and custom OpenAI-compatible endpoints |
 | Cost controls | Only `free` and `local` model definitions are eligible |
 | Privacy modes | `auto`, `free`, `local`, and `private` |
 | Token center | Hidden token entry, multiple accounts, fingerprints, listing, and removal |
 | Safety | Workspace boundary, secret-file blocking, explicit write/command approval |
 | Languages | English, Turkish, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean |
+| Automation | Headless JSON runs, built-in smoke/core benchmark suites, checkpoints and undo |
 
 ## Agent workflow
 
@@ -63,10 +72,14 @@ For project tasks, SoleilCode behaves as an execution agent:
 
 1. It takes a bounded snapshot of the current project structure.
 2. SoleilRelay classifies the task and selects a suitable free or local model.
-3. The model inspects, writes, replaces, or verifies files through explicit tools.
-4. Malformed, flattened, or truncated tool JSON is repaired instead of printed as chat.
-5. Edit tasks cannot finish until a file write succeeds or the user denies it.
-6. The final answer includes the exact files that were created or changed.
+3. The provider receives native function definitions and the model calls one project
+   tool at a time. Text JSON remains as a compatibility fallback for older models.
+4. The model inspects, writes, replaces, or verifies files through bounded tools.
+5. Every approved `write_file` or `replace_in_file` captures the previous file state.
+6. Browser applications are checked in a real locally installed Chromium browser.
+7. Malformed, flattened, or truncated fallback JSON is repaired instead of printed as chat.
+8. Edit tasks cannot finish until a file write succeeds or the user denies it.
+9. The final answer includes the exact files that were created or changed.
 
 When a standalone app is requested from a general workspace, the agent is instructed
 to create a descriptive subdirectory such as `snake-game/index.html`. When the
@@ -119,6 +132,63 @@ Work in a specific directory:
 ```bash
 soleil --cwd C:\projects\my-app
 ```
+
+Run one task without the interactive interface:
+
+```bash
+soleil run "fix the failing login test" --cwd C:\projects\my-app --yes --json
+```
+
+Run the fast one-task benchmark or the three-task core suite:
+
+```bash
+soleil bench --suite smoke
+soleil bench --suite core --runs 3 --json
+```
+
+Benchmarks use the configured free/local routes and therefore consume their quota.
+Each case runs in a new temporary project that is removed after verification.
+
+## Headless automation
+
+`soleil run` uses the same routing, tools, safety boundaries, checkpoints, and agent
+loop as the interactive interface. JSON output includes the final answer, model
+attempts, token usage when reported by the provider, tool results, protocol repair
+count, timing, and the generated checkpoint.
+
+```bash
+soleil run "update the README" --yes --json
+soleil run --prompt-file task.txt --cwd C:\projects\my-app --yes --json
+```
+
+Without `--yes`, headless writes and commands are denied because no interactive
+approval prompt is available. Use automatic approval only in controlled workspaces.
+
+## Browser verification
+
+The `browser_test` tool starts an ephemeral local server, launches an installed
+Microsoft Edge, Google Chrome, or Chromium executable, performs requested keyboard
+interactions, records page and console errors, and saves a screenshot under
+`.soleil/artifacts/`.
+
+External network requests and service workers are blocked during verification.
+Secret paths such as `.env`, `.git`, `.soleil`, and private-key files are never
+served. Set `SOLEIL_BROWSER_PATH` when the browser executable is installed in a
+non-standard location.
+
+## Checkpoints and undo
+
+Before SoleilCode overwrites or replaces a file, it stores that file's previous
+state under `.soleil/checkpoints/`. In the interactive interface:
+
+```text
+/checkpoints
+/undo
+```
+
+Undo restores edited files and removes files that the agent created in the latest
+checkpoint. Commands can modify files outside SoleilCode's file tools, so command
+side effects are intentionally not claimed as reversible.
 
 ## Interface languages
 
@@ -255,6 +325,8 @@ is planned.
 | `/mode free` | Use free routes |
 | `/mode local` | Use local routes only |
 | `/mode private` | Keep source code on the device |
+| `/checkpoints` | List recoverable agent file checkpoints |
+| `/undo` | Restore the latest checkpoint |
 | `/clear` | Clear conversation context |
 | `/exit` | Exit SoleilCode |
 
@@ -295,6 +367,8 @@ retry windows can be honored once when doing so is faster than abandoning the ro
 - Project tools cannot leave the selected workspace.
 - `.env`, `.git`, private keys, certificates, and common secret files are blocked.
 - File writes and terminal commands require approval by default.
+- Browser verification is local-only and blocks secret paths and external requests.
+- Checkpoints contain only prior contents of files changed through SoleilCode file tools.
 - API keys are not included in model prompts.
 - Token entry is hidden and token listings show fingerprints only.
 - `private` mode only permits local models.
@@ -311,17 +385,22 @@ npm test
 npm run check
 ```
 
-The test suite covers agent tool loops, safe workspace boundaries, secret-file
-blocking, fallback routing, task-aware routing, rate-limit retries, credential
-handling, and internationalization.
+The test suite covers native and fallback tool loops, headless JSON execution,
+real-browser interaction, checkpoint restoration, benchmark reporting, safe
+workspace boundaries, routing, rate-limit retries, credentials, and internationalization.
 
 ## Project status
 
 ### Available now
 
 - Full terminal coding-agent loop
+- Provider-native tool calling with text-protocol fallback
 - Automatic workspace inspection and enforced project execution
 - Recovery from malformed or truncated open-model tool responses
+- Headless `run --json` automation
+- Isolated smoke and core benchmark suites
+- Real local browser verification with screenshots
+- File checkpoints, `/checkpoints`, and `/undo`
 - Free/local task-aware routing
 - Multiple provider tokens
 - Ten-language interface

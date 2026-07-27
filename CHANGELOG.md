@@ -2,6 +2,36 @@
 
 All notable changes to SoleilCode are documented here.
 
+## [0.5.0] - 2026-07-27
+
+### Added
+
+- Provider-native function calling for OpenAI-compatible routes, Gemini, and
+  supported Ollama models, with the existing JSON protocol retained as fallback.
+- `soleil run "TASK" --yes --json` and `--prompt-file` for headless automation.
+- `soleil bench` with isolated `smoke` and `core` suites, repetitions, JSON output,
+  latency, token, tool, route, and protocol-repair metrics.
+- Local file checkpoints for approved writes and replacements, plus `/checkpoints`
+  and `/undo`.
+- A real-browser `browser_test` tool using an installed Edge, Chrome, or Chromium
+  executable, keyboard interaction, runtime error capture, and screenshots.
+- End-to-end coverage for native tools, headless runs, benchmark reporting,
+  checkpoint restoration, and real browser interaction.
+
+### Security
+
+- Browser verification blocks external requests, service workers, internal
+  `.git`/`.soleil` paths, environment files, and private-key formats.
+- Checkpoint restore validates every target before changing any file.
+- Headless mutations remain denied unless approval is explicitly configured or
+  `--yes` is supplied.
+
+### Changed
+
+- Version bumped to 0.5.0.
+- Provider tool incompatibility automatically falls back to the text protocol.
+- README and help now document automation, benchmarks, browser checks, and undo.
+
 ## [0.4.0] - 2026-07-27
 
 ### Added

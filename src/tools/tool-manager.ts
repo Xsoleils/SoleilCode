@@ -8,6 +8,8 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { BrowserVerifier } from "../browser/browser-verifier.js";
+import type { CheckpointManager } from "../checkpoints/checkpoint-manager.js";
 import type { ToolCall, ToolResult } from "../types.js";
 
 const execAsync = promisify(exec);
@@ -44,6 +46,8 @@ export class ToolManager {
     private readonly confirm: Confirm,
     private readonly autoApprove: boolean,
     private readonly commandTimeoutMs: number,
+    private readonly checkpoints?: CheckpointManager,
+    private readonly browser = new BrowserVerifier(root),
   ) {}
 
   async execute(call: ToolCall): Promise<ToolResult> {
@@ -63,6 +67,8 @@ export class ToolManager {
           return await this.runCommand(call.arguments);
         case "git_diff":
           return await this.gitDiff();
+        case "browser_test":
+          return await this.browserTest(call.arguments);
         default:
           return { ok: false, output: `Unknown tool: ${call.tool}` };
       }
@@ -196,6 +202,7 @@ export class ToolManager {
         clip(args.content, 3_000),
       ));
     if (!approved) return { ok: false, denied: true, output: "The user denied the write operation." };
+    await this.checkpoints?.captureFile(absolute);
     await mkdir(path.dirname(absolute), { recursive: true });
     await writeFile(absolute, args.content, "utf8");
     return { ok: true, output: `${relative} written (${args.content.length} characters).` };
@@ -219,6 +226,7 @@ export class ToolManager {
     if (!approved) {
       return { ok: false, denied: true, output: "The user denied the edit operation." };
     }
+    await this.checkpoints?.captureFile(absolute);
     await writeFile(absolute, content.replace(args.oldText, args.newText), "utf8");
     return { ok: true, output: `${relative} updated.` };
   }
@@ -274,5 +282,15 @@ export class ToolManager {
         output: `Could not read the Git diff: ${error instanceof Error ? error.message : error}`,
       };
     }
+  }
+
+  private async browserTest(args: Record<string, unknown>): Promise<ToolResult> {
+    if (typeof args.path !== "string") throw new Error("An HTML file path is required.");
+    const keys = Array.isArray(args.keys)
+      ? args.keys.filter((item): item is string => typeof item === "string")
+      : [];
+    const waitMs = Math.max(0, Math.min(toInteger(args.waitMs, 300), 5_000));
+    const result = await this.browser.verify(args.path, keys, waitMs);
+    return { ok: result.ok, output: clip(JSON.stringify(result, null, 2)) };
   }
 }

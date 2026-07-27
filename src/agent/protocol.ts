@@ -8,6 +8,7 @@ const TOOL_NAMES = new Set([
   "replace_in_file",
   "run_command",
   "git_diff",
+  "browser_test",
 ]);
 
 function tryParse(value: string): unknown {
@@ -86,7 +87,7 @@ export function parseAgentResponse(raw: string): ParsedAgentResponse {
 
   const invalidToolAction =
     /^\s*\{/.test(sanitized) ||
-    /"(?:type|tool)"\s*:\s*"(?:tool|list_files|read_file|search_text|write_file|replace_in_file|run_command|git_diff)"/i.test(
+    /"(?:type|tool)"\s*:\s*"(?:tool|list_files|read_file|search_text|write_file|replace_in_file|run_command|git_diff|browser_test)"/i.test(
       sanitized,
     ) ||
     /<\/?think>/i.test(raw);

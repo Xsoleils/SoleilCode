@@ -1,6 +1,6 @@
 {
   "name": "soleilcode",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Free-first, local-first AI coding agent powered by SoleilRelay.",
   "homepage": "https://github.com/Xsoleils/SoleilCode#readme",
   "bugs": {
@@ -18,6 +18,7 @@
     "bin",
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
@@ -47,5 +48,8 @@
     "@types/node": "^24.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0"
+  },
+  "dependencies": {
+    "playwright-core": "^1.62.0"
   }
 }

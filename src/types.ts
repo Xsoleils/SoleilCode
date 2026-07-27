@@ -37,13 +37,30 @@ export interface ProviderDefinition {
 }
 
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  toolCalls?: NativeToolCall[];
+  toolCallId?: string;
+  name?: string;
+}
+
+export interface NativeToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
 }
 
 export interface ChatRequest {
   model: ModelDefinition;
   messages: ChatMessage[];
+  tools?: ToolDefinition[];
+  toolChoice?: "auto" | "none";
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
@@ -56,6 +73,7 @@ export interface TokenUsage {
 
 export interface ChatResponse {
   content: string;
+  toolCalls?: NativeToolCall[];
   usage?: TokenUsage;
 }
 
