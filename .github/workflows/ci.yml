@@ -11,11 +11,14 @@ permissions:
 
 jobs:
   test:
-    runs-on: windows-latest
-    timeout-minutes: 10
+    name: ${{ matrix.os }} · Node.js ${{ matrix.node-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     strategy:
+      fail-fast: false
       matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
         node-version: [22.x, 24.x]
 
     steps:

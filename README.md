@@ -12,19 +12,15 @@ SoleilCode understands your project, uses tools with explicit approval, and lets
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-16a34a.svg)](LICENSE)
 [![Free-first](https://img.shields.io/badge/models-free--first-4ade80)](#free-models)
+[![SoleilBench](https://img.shields.io/badge/SoleilBench-core%203%2F3-22c55e)](docs/BENCHMARKS.md)
 
 </div>
 
-```text
-╭────────────────────────────────────────────────────────────────────╮
-│   /\_/\      SoleilCode · Free-first AI coding agent               │
-│  ( •.• )     SoleilRelay · auto · 4 models ready · EN              │
-│  / >☀        C:\projects\your-app                                  │
-╰────────────────────────────────────────────────────────────────────╯
-  /help commands  ·  Ctrl+C stop  ·  /exit exit
-──────────────────────────────────────────────────────────────────────
-❯ find the login bug, fix it, and run the relevant tests
-```
+![SoleilCode terminal demo](docs/assets/soleilcode-demo.gif)
+
+<p align="center">
+  <sub>One prompt, automatic free/local model routing, real file tools, and browser verification.</sub>
+</p>
 
 ## Why SoleilCode?
 
@@ -91,7 +87,7 @@ current directory is already dedicated to the app, it writes directly there.
 ### Requirements
 
 - Node.js 22 or newer
-- Windows CMD or PowerShell
+- npm and a Windows, macOS, or Linux terminal
 - At least one local model or free provider token
 
 ### Install from npm
@@ -101,21 +97,17 @@ npm install -g soleilcode
 soleil
 ```
 
-### Install from source on Windows
+### Install from source
 
 Clone the repository, open the folder, and run:
-
-```bat
-install-windows.cmd
-```
-
-Or install manually:
 
 ```bash
 npm install
 npm run build
 npm link
 ```
+
+Windows users can alternatively run `install-windows.cmd`.
 
 Then open any project directory and start SoleilCode:
 
@@ -138,13 +130,13 @@ soleil setup
 Work in a specific directory:
 
 ```bash
-soleil --cwd C:\projects\my-app
+soleil --cwd ./my-app
 ```
 
 Run one task without the interactive interface:
 
 ```bash
-soleil run "fix the failing login test" --cwd C:\projects\my-app --yes --json
+soleil run "fix the failing login test" --cwd ./my-app --yes --json
 ```
 
 Run the fast one-task benchmark or the three-task core suite:
@@ -156,6 +148,7 @@ soleil bench --suite core --runs 3 --json
 
 Benchmarks use the configured free/local routes and therefore consume their quota.
 Each case runs in a new temporary project that is removed after verification.
+See the [benchmark methodology and latest verified snapshot](docs/BENCHMARKS.md).
 
 ## Headless automation
 
@@ -166,7 +159,7 @@ count, timing, and the generated checkpoint.
 
 ```bash
 soleil run "update the README" --yes --json
-soleil run --prompt-file task.txt --cwd C:\projects\my-app --yes --json
+soleil run --prompt-file task.txt --cwd ./my-app --yes --json
 ```
 
 Without `--yes`, headless writes and commands are denied because no interactive
@@ -413,7 +406,7 @@ workspace boundaries, routing, rate-limit retries, credentials, and internationa
 - Multiple provider tokens
 - Ten-language interface
 - Windows installer
-- Automated test suite and CI
+- Automated CI across Windows, macOS, and Linux
 
 ### Planned
 

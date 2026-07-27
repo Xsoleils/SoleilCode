@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "soleilcodeVersion": "0.5.0",
+  "suite": "core",
+  "runs": 1,
+  "startedAt": "2026-07-27T20:20:11.992Z",
+  "durationMs": 85459,
+  "passed": 3,
+  "failed": 0,
+  "passRate": 1,
+  "environment": {
+    "os": "Windows 10.0.26200.8875",
+    "node": "24.14.1",
+    "routes": "configured free cloud routes"
+  },
+  "cases": [
+    {
+      "task": "create-file",
+      "run": 1,
+      "pass": true,
+      "latencyMs": 13056,
+      "detail": "Exact file content matched.",
+      "models": [
+        "Qwen 3.6 27B",
+        "GPT-OSS 20B",
+        "OpenRouter free router"
+      ],
+      "tools": [
+        "list_files",
+        "write_file",
+        "write_file",
+        "read_file"
+      ],
+      "protocolRepairs": 0,
+      "usage": {
+        "input": 7420,
+        "output": 787
+      }
+    },
+    {
+      "task": "repair-code",
+      "run": 1,
+      "pass": true,
+      "latencyMs": 44211,
+      "detail": "add(2, 3) returned 5.",
+      "models": [
+        "GPT-OSS 120B",
+        "OpenRouter free router",
+        "Qwen 3.6 27B",
+        "Gemini 3.5 Flash-Lite"
+      ],
+      "tools": [
+        "list_files",
+        "list_files",
+        "read_file",
+        "replace_in_file",
+        "run_command"
+      ],
+      "protocolRepairs": 1,
+      "usage": {
+        "input": 8970,
+        "output": 394
+      }
+    },
+    {
+      "task": "browser-runtime",
+      "run": 1,
+      "pass": true,
+      "latencyMs": 28163,
+      "detail": "Browser loaded without runtime errors and the interaction incremented the count.",
+      "models": [
+        "Gemini 3.6 Flash",
+        "Qwen 3.6 27B",
+        "GPT-OSS 20B"
+      ],
+      "tools": [
+        "list_files",
+        "write_file",
+        "browser_test"
+      ],
+      "protocolRepairs": 0,
+      "usage": {
+        "input": 5704,
+        "output": 572
+      }
+    }
+  ]
+}

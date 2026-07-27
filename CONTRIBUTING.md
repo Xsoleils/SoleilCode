@@ -64,7 +64,7 @@ When adding or updating translations:
 - Prefer small TypeScript modules with explicit types.
 - Keep user-facing errors actionable.
 - Avoid adding runtime dependencies unless they materially improve the CLI.
-- Preserve Windows CMD and PowerShell compatibility.
+- Preserve Windows, macOS, and Linux terminal compatibility.
 
 By contributing, you agree that your contribution may be distributed under the
 MIT License.
