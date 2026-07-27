@@ -20,7 +20,7 @@ import { ToolManager } from "./tools/tool-manager.js";
 import type { SoleilMode } from "./types.js";
 import { TerminalUI } from "./ui.js";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const MODES = new Set<SoleilMode>(["auto", "free", "local", "private"]);
 
 interface CliOptions {

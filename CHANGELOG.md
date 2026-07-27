@@ -2,6 +2,24 @@
 
 All notable changes to SoleilCode are documented here.
 
+## [0.4.0] - 2026-07-27
+
+### Added
+
+- Automatic project snapshots before edit, debug, review, test, and long-context tasks.
+- Recovery for open-weight models that emit `<think>` blocks or flattened tool calls.
+- Automatic correction prompts for malformed and truncated tool JSON.
+- Mandatory workspace tools for project tasks and mandatory successful file writes for edit tasks.
+- Exact absolute file paths appended to final answers when the model omits them.
+- Larger task-aware output budgets for coding, review, debugging, and test work.
+- End-to-end coverage for a truncated snake-game response and nested project creation.
+
+### Changed
+
+- Requests such as “prepare/build me a game” are classified as coding tasks.
+- SoleilCode no longer treats malformed tool output as a normal chat response.
+- The agent prompt now explicitly requires project execution, verification, and path reporting.
+
 ## [0.3.0] - 2026-07-27
 
 ### Added

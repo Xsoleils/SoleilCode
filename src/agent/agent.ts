@@ -1,5 +1,6 @@
+import path from "node:path";
 import { buildSystemPrompt } from "./prompt.js";
-import { parseAgentAction } from "./protocol.js";
+import { parseAgentResponse } from "./protocol.js";
 import type { ChatMessage, RelayResult, ToolResult } from "../types.js";
 import { SoleilRelay } from "../relay/relay.js";
 import { ToolManager } from "../tools/tool-manager.js";
@@ -63,32 +64,131 @@ export class SoleilAgent {
       return translate(this.language, "greeting");
     }
     const task = classifyTask(input);
+    const projectTask = new Set([
+      "edit",
+      "debug",
+      "review",
+      "test",
+      "long-context",
+    ]).has(task);
+    let projectSnapshot = "";
+    if (projectTask) {
+      const snapshotCall = {
+        type: "tool" as const,
+        tool: "list_files",
+        arguments: { path: ".", maxDepth: 2 },
+        reason: "Inspect project structure before acting",
+      };
+      this.events.onTool?.(snapshotCall.tool, snapshotCall.reason);
+      const snapshot = await this.tools.execute(snapshotCall);
+      this.events.onToolResult?.(snapshotCall.tool, snapshot);
+      projectSnapshot = snapshot.output.slice(0, 12_000);
+    }
 
     const working: ChatMessage[] = [
       { role: "system", content: buildSystemPrompt(this.root) },
       ...this.conversation,
-      { role: "user", content: input },
+      {
+        role: "user",
+        content: projectSnapshot
+          ? `${input}\n\nPROJECT_SNAPSHOT\n${projectSnapshot}`
+          : input,
+      },
     ];
+    const changedFiles = new Set<string>();
+    let toolCalls = 0;
+    let writeDenied = false;
+    let protocolFailures = 0;
 
     for (let step = 1; step <= this.maxSteps; step += 1) {
       this.events.onThinking?.();
       const response = await this.relay.chat(working, signal, task);
       this.events.onModelSelected?.(response);
-      const action = parseAgentAction(response.content);
+      const parsed = parseAgentResponse(response.content);
+
+      if (parsed.invalidToolAction || !parsed.action) {
+        protocolFailures += 1;
+        working.push({
+          role: "assistant",
+          content: parsed.sanitized.slice(0, 1_200),
+        });
+        working.push({
+          role: "user",
+          content:
+            "PROTOCOL_ERROR: Your previous response was not one complete valid JSON action. " +
+            "Do not explain, do not emit <think>, and do not use Markdown. " +
+            'Reply with exactly {"type":"tool","tool":"TOOL_NAME","arguments":{...},"reason":"..."} ' +
+            'or {"type":"final","message":"..."}. If a file was too large, produce a smaller complete implementation.',
+        });
+        if (protocolFailures >= 3) {
+          throw new Error(
+            "The selected model repeatedly returned an invalid or truncated tool action. Try another model or a smaller request.",
+          );
+        }
+        continue;
+      }
+
+      const action = parsed.action;
       working.push({ role: "assistant", content: response.content });
 
       if (action.type === "final") {
+        if (projectTask && toolCalls === 0) {
+          working.push({
+            role: "user",
+            content:
+              "ACTION_REQUIRED: This is a project task, not a chat-only request. " +
+              "Inspect or modify the project with an available tool before giving the final answer.",
+          });
+          continue;
+        }
+        if (task === "edit" && changedFiles.size === 0 && !writeDenied) {
+          working.push({
+            role: "user",
+            content:
+              "WRITE_REQUIRED: The user asked you to create or change code, but no file was written. " +
+              "Use write_file or replace_in_file now. For a new standalone app in a general workspace, " +
+              "create a descriptive subdirectory and place the entry file inside it.",
+          });
+          continue;
+        }
+
+        let finalMessage = action.message;
+        const missingPaths = [...changedFiles]
+          .map((file) => path.resolve(this.root, file))
+          .filter(
+            (absolute) =>
+              !finalMessage.includes(absolute) &&
+              !finalMessage.includes(path.relative(this.root, absolute)),
+          );
+        if (missingPaths.length) {
+          finalMessage += `\n\nFiles:\n${missingPaths.map((file) => `- ${file}`).join("\n")}`;
+        }
         this.conversation.push(
           { role: "user", content: input },
-          { role: "assistant", content: action.message },
+          { role: "assistant", content: finalMessage },
         );
         if (this.conversation.length > 20) this.conversation.splice(0, this.conversation.length - 20);
-        return action.message;
+        return finalMessage;
       }
 
+      toolCalls += 1;
       this.events.onTool?.(action.tool, action.reason);
       const result = await this.tools.execute(action);
       this.events.onToolResult?.(action.tool, result);
+      if (
+        result.ok &&
+        (action.tool === "write_file" || action.tool === "replace_in_file") &&
+        typeof action.arguments.path === "string"
+      ) {
+        changedFiles.add(action.arguments.path);
+      }
+      if (
+        result.denied &&
+        (action.tool === "write_file" ||
+          action.tool === "replace_in_file")
+      ) {
+        writeDenied = true;
+      }
       working.push({
         role: "user",
         content: `TOOL_RESULT ${action.tool}\n${JSON.stringify(result)}`,

@@ -20,6 +20,12 @@ import { taskLabel } from "./task-classifier.js";
 const COOLDOWN_MS = 45_000;
 const MAX_AUTOMATIC_RATE_LIMIT_WAIT_MS = 30_000;
 
+function outputTokenBudget(task: TaskKind): number {
+  if (task === "edit" || task === "long-context") return 4_096;
+  if (task === "debug" || task === "review" || task === "test") return 3_072;
+  return 2_048;
+}
+
 async function waitFor(
   milliseconds: number,
   signal?: AbortSignal,
@@ -177,7 +183,7 @@ export class SoleilRelay {
           model: decision.model,
           messages,
           temperature: 0.15,
-          maxTokens: 2048,
+          maxTokens: outputTokenBudget(task),
           ...(signal ? { signal } : {}),
         });
         state.successes += 1;

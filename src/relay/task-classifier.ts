@@ -36,7 +36,7 @@ const RULES: Array<{ kind: TaskKind; patterns: RegExp[] }> = [
   {
     kind: "edit",
     patterns: [
-      /\b(ekle|oluştur|yaz|değiştir|düzelt|uygula|implement|refactor|rename|sil)\b/i,
+      /\b(ekle|oluştur|hazırla|yap(?!ıyor)|yaz|değiştir|düzelt|uygula|implement|refactor|rename|sil)\b/i,
       /\b(build|create|update|modify|migrate)\b/i,
       /(crear|actualizar|modifier|créer|ändern|erstellen|creare|aggiornare|criar|atualizar|создать|изменить|作成|変更|생성|변경)/iu,
     ],

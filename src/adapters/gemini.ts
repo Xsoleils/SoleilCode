@@ -40,7 +40,7 @@ export class GeminiAdapter implements ProviderAdapter {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "user-agent": "SoleilCode/0.3",
+        "user-agent": "SoleilCode/0.4",
         "x-goog-api-key": provider.apiKey,
       },
       body: JSON.stringify({

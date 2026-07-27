@@ -24,7 +24,7 @@ export class OpenAICompatibleAdapter implements ProviderAdapter {
       headers: {
         "content-type": "application/json",
         ...(provider.apiKey ? { authorization: `Bearer ${provider.apiKey}` } : {}),
-        "user-agent": "SoleilCode/0.3",
+        "user-agent": "SoleilCode/0.4",
       },
       body: JSON.stringify({
         model: request.model.id,

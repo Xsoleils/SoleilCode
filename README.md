@@ -38,6 +38,8 @@ a different approach:
   while SoleilRelay tries another eligible route.
 - **Human-controlled tools** — file writes and commands require approval by default.
 - **Ten interface languages** — change language without reinstalling or editing code.
+- **Project-agent behavior** — coding requests inspect the workspace, write real files,
+  verify the result, and report exact paths instead of pasting an unfinished code block.
 
 > SoleilCode is an early-stage project. Review proposed edits and terminal commands
 > before approving them, especially in important repositories.
@@ -54,6 +56,21 @@ a different approach:
 | Token center | Hidden token entry, multiple accounts, fingerprints, listing, and removal |
 | Safety | Workspace boundary, secret-file blocking, explicit write/command approval |
 | Languages | English, Turkish, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean |
+
+## Agent workflow
+
+For project tasks, SoleilCode behaves as an execution agent:
+
+1. It takes a bounded snapshot of the current project structure.
+2. SoleilRelay classifies the task and selects a suitable free or local model.
+3. The model inspects, writes, replaces, or verifies files through explicit tools.
+4. Malformed, flattened, or truncated tool JSON is repaired instead of printed as chat.
+5. Edit tasks cannot finish until a file write succeeds or the user denies it.
+6. The final answer includes the exact files that were created or changed.
+
+When a standalone app is requested from a general workspace, the agent is instructed
+to create a descriptive subdirectory such as `snake-game/index.html`. When the
+current directory is already dedicated to the app, it writes directly there.
 
 ## Quick start
 
@@ -303,6 +320,8 @@ handling, and internationalization.
 ### Available now
 
 - Full terminal coding-agent loop
+- Automatic workspace inspection and enforced project execution
+- Recovery from malformed or truncated open-model tool responses
 - Free/local task-aware routing
 - Multiple provider tokens
 - Ten-language interface
