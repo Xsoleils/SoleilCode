@@ -8,6 +8,7 @@ SoleilCode understands your project, uses tools with explicit approval, and lets
 **SoleilRelay** choose the best available free or local model for each task.
 
 [![CI](https://github.com/Xsoleils/SoleilCode/actions/workflows/ci.yml/badge.svg)](https://github.com/Xsoleils/SoleilCode/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/soleilcode.svg?logo=npm)](https://www.npmjs.com/package/soleilcode)
 [![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-16a34a.svg)](LICENSE)
 [![Free-first](https://img.shields.io/badge/models-free--first-4ade80)](#free-models)
@@ -93,7 +94,14 @@ current directory is already dedicated to the app, it writes directly there.
 - Windows CMD or PowerShell
 - At least one local model or free provider token
 
-### Install on Windows
+### Install from npm
+
+```bash
+npm install -g soleilcode
+soleil
+```
+
+### Install from source on Windows
 
 Clone the repository, open the folder, and run:
 

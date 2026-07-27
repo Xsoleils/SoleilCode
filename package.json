@@ -12,7 +12,7 @@
   },
   "type": "module",
   "bin": {
-    "soleil": "./bin/soleil.js"
+    "soleil": "bin/soleil.js"
   },
   "files": [
     "bin",
