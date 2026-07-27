@@ -1,0 +1,25 @@
+{
+  "mode": "auto",
+  "approval": "ask",
+  "maxAgentSteps": 12,
+  "commandTimeoutMs": 120000,
+  "providers": [
+    {
+      "id": "my-free-provider",
+      "displayName": "Ücretsiz Sağlayıcım",
+      "kind": "openai-compatible",
+      "baseUrl": "https://example.com/v1",
+      "apiKeyEnv": "MY_FREE_PROVIDER_API_KEY",
+      "enabled": false,
+      "models": [
+        {
+          "id": "coding-model-name",
+          "displayName": "Kodlama Modeli",
+          "cost": "free",
+          "priority": 80,
+          "capabilities": ["chat", "coding", "tools"]
+        }
+      ]
+    }
+  ]
+}
