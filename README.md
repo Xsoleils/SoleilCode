@@ -146,6 +146,27 @@ soleil bench --suite smoke
 soleil bench --suite core --runs 3 --json
 ```
 
+### PowerShell tab completion
+
+Windows PowerShell users can load deterministic completions for the `soleil`
+command:
+
+```powershell
+. "$PWD\completions\soleil.ps1"
+```
+
+To keep it available, add the same line to your PowerShell profile:
+
+```powershell
+notepad $PROFILE
+```
+
+Remove the line from `$PROFILE` to uninstall the completion hook. The script
+completes the documented commands (`doctor`, `setup`, `language`, `run`,
+`bench`), common options (`--cwd`, `--mode`, `--language`, `--yes`, `--json`,
+`--suite`, `--runs`), and known values for `--mode`, `--language`, and
+`--suite`.
+
 Benchmarks use the configured free/local routes and therefore consume their quota.
 Each case runs in a new temporary project that is removed after verification.
 See the [benchmark methodology and latest verified snapshot](docs/BENCHMARKS.md).
